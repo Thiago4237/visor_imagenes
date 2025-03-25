@@ -11,9 +11,10 @@ class VisorImagenes(QMainWindow):
         super().__init__()
         self.inicializarUI()
 
-    def inicializarUI(self):        
-        self.setWindowTitle("Visor de imágenes")
-        self.setGeometry(100, 100, 800, 600)         
+    def inicializarUI(self):     
+        self.setWindowState(Qt.WindowState.WindowMaximized)   
+        self.setWindowTitle("Visor de imágenes")      
+        self.setMinimumSize(800, 600) 
         
         # Ruta para el icono de la ventana
         icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "img", "logo.png"))
@@ -61,7 +62,7 @@ class VisorImagenes(QMainWindow):
         layout_controles.addStretch()  # Empuja los botones hacia arriba
         
         # Agregar layouts al layout horizontal
-        layout_horizontal.addLayout(layout_imagen, 2)
+        layout_horizontal.addLayout(layout_imagen, 3)
         layout_horizontal.addLayout(layout_controles, 1)
         
         self.setCentralWidget(contenedor)
@@ -100,11 +101,23 @@ class VisorImagenes(QMainWindow):
             else:
                 return  # Formato no soportado
                 
-            # Mostrar la imagen
+            # Crear un pixmap con la imagen
             pixmap = QPixmap.fromImage(qImg)
-            self.labelImagen.setPixmap(pixmap)
-            self.labelImagen.setScaledContents(True)
-
+            
+            # Escalar la imagen manteniendo la proporción para que se ajuste al label
+            label_size = self.labelImagen.size()
+            scaled_pixmap = pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            
+            # Mostrar la imagen escalada
+            self.labelImagen.setPixmap(scaled_pixmap)
+            self.labelImagen.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            
+    # Actualizar automáticamente la imagen cuando se redimension
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Volver a mostrar la imagen cuando se redimensiona la ventana
+        if self.imagen is not None:
+            self.mostrarImagen()
             
     def guardarImagen(self):
         if self.imagen is not None:
