@@ -9,6 +9,8 @@ class VisorImagen(QWidget):
     def __init__(self):
         super().__init__()
         self.imagen = None
+        self.imagen_base = None
+        self.imagen_original = None
         self.initUI()
     
     def initUI(self):
@@ -34,7 +36,11 @@ class VisorImagen(QWidget):
     
     def cargarImagen(self, filePath):
         if filePath:
-            self.imagen = lm.cargar_imagen(filePath)
+
+            self.imagen_original = lm.cargar_imagen(filePath)  # Guardar original
+            self.imagen_base = self.imagen_original.copy()  # Base para modificaciones
+            self.imagen = self.imagen_original.copy()  # Imagen visualizada
+
             self.mostrarImagen()
             self.barraRuta.setText(filePath)
     
@@ -72,3 +78,42 @@ class VisorImagen(QWidget):
         super().resizeEvent(event)
         if self.imagen is not None:
             self.mostrarImagen()
+
+    def invertirColoresImagen(self):
+        """
+        Invierte los colores de la imagen actual.
+        haciendo llamado a la librería de manipulación.
+        """
+        if self.imagen is not None:
+            self.imagen = lm.invertirColoresImagen(self.imagen)
+            self.imagen_base = self.imagen.copy() # Actualizar base modificada
+            self.mostrarImagen()
+
+    def aplicarAjusteBrillo(self, valor):
+        if self.imagen_base is not None:
+            self.imagen = lm.ajusteBrillo(self.imagen_base, valor)
+            self.mostrarImagen()
+
+    def ajustarContraste(self, valor):
+        """ Ajusta el contraste usando el valor del slider """
+        if self.imagen_base is not None:
+            tipo = 0 if valor < 1 else 1
+            contraste = valor if valor < 1 else valor - 1 
+            if contraste > 0:
+                self.imagen = lm.ajusteContraste(self.imagen_base, contraste, tipo)
+                self.mostrarImagen()
+
+    def binarizarImagen(self):
+        """ Binariza la imagen actual """
+        if self.imagen_base is not None:
+            self.imagen = lm.binarizar_imagen(self.imagen_base)
+            self.mostrarImagen()
+
+    def aplicarRotacion(self, angulo):
+        """ Aplica la rotación a la imagen y actualiza la vista. """
+        if self.imagen_base is not None:
+            self.imagen = lm.rotar_imagen(self.imagen_base, angulo)
+            self.mostrarImagen()
+
+
+

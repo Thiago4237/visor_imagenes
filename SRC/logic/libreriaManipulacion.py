@@ -47,7 +47,7 @@ def ajusteBrillo (imagen, brillo):
     Retorna:
     numpy.ndarray: La imagen con el brillo ajustado.
     """
-    return np.clip(imagen + brillo, 0, 1)
+    return np.clip(imagen * brillo, 0, 1)
 
 # ajuste de canal R-G-B (0-1-2)
 def ajusteCanal(imagen, ajuste, capa):
@@ -190,6 +190,10 @@ def rotar_imagen(img, angulo):
     
     # Centro de la imagen
     x_centro, y_centro = w / 2, h / 2
+    
+    x = x.astype(np.float64)  # Convertir a float64 antes de la resta
+    y = y.astype(np.float64)
+    
     x -= x_centro
     y -= y_centro
 
