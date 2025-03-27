@@ -28,7 +28,7 @@ class BarraLateral(QToolBar):
         ajustes_basicos_action.triggered.connect(lambda: self.mostrarOpciones("Básicos"))
         self.addAction(ajustes_basicos_action)
 
-        ajustes_filtros_icon_path = cfg.ICONOS["guardar"]
+        ajustes_filtros_icon_path = cfg.ICONOS["ajustesDeFiltros"]
         ajustes_filtros_action = QAction(QIcon(ajustes_filtros_icon_path), "Ajustes de Filtros", self)
         ajustes_basicos_action.setCheckable(True) 
         ajustes_filtros_action.triggered.connect(lambda: self.mostrarOpciones("de Filtros"))
