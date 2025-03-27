@@ -27,13 +27,13 @@ ICONOS = {
     "actualizar": get_icon_path("actualizar.png"),
     "guardar": get_icon_path("guardar.png"),
     "ajustesBasicos": get_icon_path("ajustesBasicos2.png"),
-    "ajustesDeFiltros": get_icon_path("ajustesDeFiltros.png"),
+    "ajustesDeFiltros": get_icon_path("ajustesFiltros.png"),
     "ajustesAvanzados": get_icon_path("ajustesAvanzados.png"),
 }
 
 # Atajos de teclado
 ATAJOS = {
-    "cargar": "Ctrl+O",
+    "cargar": "Ctrl+C",
     "actualizar": "Ctrl+A",
-    "guardar": "Ctrl+S",
+    "guardar": "Ctrl+G",
 }
