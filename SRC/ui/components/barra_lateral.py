@@ -62,6 +62,10 @@ class BarraLateral(QToolBar):
         
         # label = QLabel(f"Ajustes {tipo}")
         # layout.addWidget(label)
+        
+        # Ajustar tamaño del widget
+        widget_opciones.setMinimumSize(250, 400)  # Ancho: 250px, Alto: 400px
+        self.dock_widget.setMinimumSize(250, 400)  # También aplicarlo al DockWidget para que crezca
 
         if tipo == "Básicos":
             
