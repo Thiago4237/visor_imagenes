@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QToolBar, QPushButton, QDockWidget, QWidget, QLabel, QVBoxLayout, QSlider
+from PyQt6.QtWidgets import QToolBar, QComboBox, QDial, QPushButton, QDockWidget, QWidget, QLabel, QVBoxLayout, QSlider, QSpinBox
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QTimer
 import config.config as cfg
 
 class BarraLateral(QToolBar):
@@ -67,19 +67,18 @@ class BarraLateral(QToolBar):
         widget_opciones.setMinimumSize(250, 400)  # Ancho: 250px, Alto: 400px
         self.dock_widget.setMinimumSize(250, 400)  # También aplicarlo al DockWidget para que crezca
 
+        # -------------------------------------------------
+        # Botón "Invertir colores"
+        # -------------------------------------------------
+        btn_reiniciar = QPushButton("deshacer modificaciones")
+        btn_reiniciar.clicked.connect(self.parent.visor.reiniciarImagen)
+        layout.addWidget(btn_reiniciar)
+
         if tipo == "Básicos":
             
-            # Botón "Invertir colores"
-            btn_invertir_color = QPushButton("Invertir colores")
-            btn_invertir_color.clicked.connect(self.parent.visor.invertirColoresImagen)
-            layout.addWidget(btn_invertir_color)
-            
-             # Botón "binarizar"
-            btn_binarizar = QPushButton("Binarizar")
-            btn_binarizar.clicked.connect(self.parent.visor.binarizarImagen)
-            layout.addWidget(btn_binarizar)
-            
+            # -------------------------------------------------
             # **Slider de Brillo (0 a 2)**
+            # -------------------------------------------------
             self.slider_brillo = QSlider(Qt.Orientation.Horizontal)
             self.slider_brillo.setMinimum(1)
             self.slider_brillo.setMaximum(200)  # Rango: 0.0 a 2.0 (100 = 1.0)
@@ -88,35 +87,152 @@ class BarraLateral(QToolBar):
             self.slider_brillo.setSingleStep(1)
             self.slider_brillo.valueChanged.connect(lambda val: self.parent.visor.aplicarAjusteBrillo(self.cambiarValorSlider(val)))
 
-
             layout.addWidget(QLabel("Ajuste de Brillo"))
             layout.addWidget(self.slider_brillo)
             
-            # 🔹 Slider para contraste (-1.0 a 1.0 con neutro en 0.0)
+            # -------------------------------------------------
+            # 🔹 Slider para contraste negativo
+            # -------------------------------------------------
             self.sliderContraste = QSlider(Qt.Orientation.Horizontal)
             self.sliderContraste.setMinimum(1)   # Equivalente a 0.01
-            self.sliderContraste.setMaximum(200)  # Equivalente a 2.0
-            self.sliderContraste.setValue(100)    # Neutro = 1.0
+            self.sliderContraste.setMaximum(100)  # Equivalente a 1.0
+            self.sliderContraste.setValue(1)    # Neutro = 0.01
             self.sliderContraste.setSingleStep(1)
-            self.sliderContraste.valueChanged.connect(lambda val: self.parent.visor.ajustarContraste(self.cambiarValorSlider(val)))
+            self.sliderContraste.valueChanged.connect(lambda val: self.parent.visor.ajustarContrasteNegativo(self.cambiarValorSlider(val)))
 
-
-            layout.addWidget(QLabel("Contraste"))
+            layout.addWidget(QLabel("Contraste negativo"))
             layout.addWidget(self.sliderContraste)
             
-            self.slider_rotacion = QSlider(Qt.Orientation.Horizontal)
-            self.slider_rotacion.setMinimum(-180)  # Rotación mínima -180°
-            self.slider_rotacion.setMaximum(180)   # Rotación máxima 180°
-            self.slider_rotacion.setValue(0)       # Rotación inicial 0°
-            self.slider_rotacion.setTickInterval(10)
-            self.slider_rotacion.setSingleStep(1)
+            # -------------------------------------------------
+            # 🔹 Slider para contraste positivo
+            # -------------------------------------------------
+            self.sliderContraste = QSlider(Qt.Orientation.Horizontal)
+            self.sliderContraste.setMinimum(1)   # Equivalente a 0.01
+            self.sliderContraste.setMaximum(100)  # Equivalente a 1.0
+            self.sliderContraste.setValue(100)    # Neutro = 1.0
+            self.sliderContraste.setSingleStep(1)
+            self.sliderContraste.valueChanged.connect(lambda val: self.parent.visor.ajustarContrastePositivo(self.cambiarValorSlider(val)))
 
-            # Conectar el slider para aplicar la rotación en tiempo real
-            self.slider_rotacion.valueChanged.connect(lambda val: self.parent.visor.aplicarRotacion(val))
+            layout.addWidget(QLabel("Contraste positivo"))
+            layout.addWidget(self.sliderContraste)
 
+            # -------------------------------------------------
+            # Crear el input para la rotación
+            # -------------------------------------------------
             layout.addWidget(QLabel("Rotación de Imagen"))
-            layout.addWidget(self.slider_rotacion)
+
+            # Crear el combo para ángulos notables
+            self.combo_rotacion = QComboBox()
+            angulos_notables = [0, 30, 45, 60, 90, 120, 135, 150, 180, -30, -45, -60, -90, -120, -135, -150, -180]
+            self.combo_rotacion.addItems([f"{a}°" for a in angulos_notables])
+
+            # Crear el dial para ajuste manual
+            self.dial_rotacion = QDial()
+            self.dial_rotacion.setMinimum(-180)
+            self.dial_rotacion.setMaximum(180)
+            self.dial_rotacion.setValue(0)
+            self.dial_rotacion.setSingleStep(5)
+
+            # Función para aplicar rotación desde el combo
+            def aplicarRotacionDesdeCombo():
+                valor = int(self.combo_rotacion.currentText().replace("°", ""))
+                self.parent.visor.aplicarRotacion(valor)
+
+            # Conectar eventos
+            self.combo_rotacion.currentIndexChanged.connect(aplicarRotacionDesdeCombo)
+            self.dial_rotacion.valueChanged.connect(lambda val: self.parent.visor.aplicarRotacion(val))
+
+            # Agregar al layout
+            layout.addWidget(self.combo_rotacion)
+            layout.addWidget(self.dial_rotacion)
+        
+        if tipo == "de Filtros" :
             
+            # -------------------------------------------------
+            # Botón "Invertir colores"
+            # -------------------------------------------------
+            layout.addWidget(QLabel("Invertir Colores"))
+            btn_invertir_color = QPushButton("Invertir")
+            btn_invertir_color.clicked.connect(self.parent.visor.invertirColoresImagen)
+            layout.addWidget(btn_invertir_color)
+
+            # -------------------------------------------------
+            # Botón "Invertir colores"
+            # -------------------------------------------------
+            layout.addWidget(QLabel("Seleccionar Capa de Color"))
+
+            # Crear el combo para seleccionar la capa
+            self.combo_capa = QComboBox()
+            capas = {
+                "RGB (Todas)": -1,
+                "Rojo": 0,
+                "Verde": 1,
+                "Azul": 2
+            }
+            self.combo_capa.addItems(capas.keys())
+            self.combo_capa.setCurrentText("RGB (Todas)")
+
+            # Función para aplicar la selección de capa
+            def aplicarCapaSeleccionada():
+                nombre_capa = self.combo_capa.currentText()
+                indice_capa = capas[nombre_capa]
+                self.parent.visor.aplicarCapaImagen(indice_capa)
+                
+            # Función para aplicar la selección de capa
+            def aplicarCapaSeleccionada():
+                nombre_capa = self.combo_capa.currentText()
+                indice_capa = capas[nombre_capa]
+                if indice_capa == -1:
+                    self.parent.visor.reiniciarImagen()
+                else:
+                    self.parent.visor.aplicarCapaImagen(indice_capa)
+
+            # Conectar el evento de selección
+            self.combo_capa.currentIndexChanged.connect(aplicarCapaSeleccionada)
+
+            # Agregar al layout
+            layout.addWidget(self.combo_capa)
+
+            # -------------------------------------------------
+            # Botón "cmy"
+            # -------------------------------------------------
+            layout.addWidget(QLabel("Generar CMY"))
+
+            # Crear el combo para seleccionar el canal a eliminar
+            self.combo_eliminar_canal = QComboBox()
+            canales = {
+                "Ninguno": -1,  # -1 indica que no se elimina ningún canal (imagen original)
+                "Cian": 0,
+                "Magenta": 1,
+                "Amarillo": 2
+            }
+            self.combo_eliminar_canal.addItems(canales.keys())
+            self.combo_eliminar_canal.setCurrentText("Ninguno")  # Establecer RGB como valor inicial
+
+            # Función para aplicar la eliminación de canal
+            def aplicarQuitarCanal():
+                nombre_canal = self.combo_eliminar_canal.currentText()
+                indice_canal = canales[nombre_canal]
+                if indice_canal == -1:
+                    self.parent.visor.reiniciarImagen()
+                else:
+                    self.parent.visor.aplicarQuitarCanal(indice_canal)
+
+            # Conectar el evento de selección
+            self.combo_eliminar_canal.currentIndexChanged.connect(aplicarQuitarCanal)
+
+            # Agregar al layout
+            layout.addWidget(self.combo_eliminar_canal)
+
+
+        if tipo == 'Avanzados':
+            
+            # -------------------------------------------------
+            # Botón "binarizar"
+            # -------------------------------------------------
+            btn_binarizar = QPushButton("Binarizar")
+            btn_binarizar.clicked.connect(self.parent.visor.binarizarImagen)
+            layout.addWidget(btn_binarizar)
 
         widget_opciones.setLayout(layout)
 

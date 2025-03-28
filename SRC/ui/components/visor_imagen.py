@@ -94,14 +94,17 @@ class VisorImagen(QWidget):
             self.imagen = lm.ajusteBrillo(self.imagen_base, valor)
             self.mostrarImagen()
 
-    def ajustarContraste(self, valor):
+    def ajustarContrastePositivo(self, valor):
         """ Ajusta el contraste usando el valor del slider """
         if self.imagen_base is not None:
-            tipo = 0 if valor < 1 else 1
-            contraste = valor if valor < 1 else valor - 1 
-            if contraste > 0:
-                self.imagen = lm.ajusteContraste(self.imagen_base, contraste, tipo)
-                self.mostrarImagen()
+            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 1)
+            self.mostrarImagen()
+            
+    def ajustarContrasteNegativo(self, valor):
+        """ Ajusta el contraste usando el valor del slider """
+        if self.imagen_base is not None:
+            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 0)
+            self.mostrarImagen()
 
     def binarizarImagen(self):
         """ Binariza la imagen actual """
@@ -115,5 +118,25 @@ class VisorImagen(QWidget):
             self.imagen = lm.rotar_imagen(self.imagen_base, angulo)
             self.mostrarImagen()
 
+    def reiniciarImagen(self):
+        """ Restaura la imagen original """
+        if self.imagen_original is not None:
+            self.imagen = self.imagen_original.copy()
+            self.mostrarImagen()
+
+    def aplicarCapaImagen(self, imagen_capa):
+        """ Aplica la capa de imagen a la imagen base """
+        if self.imagen_base is not None:
+            self.imagen = lm.capaImagen(self.imagen_base, imagen_capa)
+            self.mostrarImagen()
 
 
+    def aplicarQuitarCanal(self, canal):
+        """ Aplica o quita el canal de la imagen base """
+        if self.imagen_base is not None:
+            self.imagen = lm.quitarCanal(self.imagen_base, canal)
+            self.mostrarImagen()
+    
+    
+    
+    
