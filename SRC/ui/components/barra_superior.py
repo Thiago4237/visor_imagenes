@@ -4,7 +4,7 @@ from PyQt6.QtGui import QIcon, QPixmap, QAction
 from PyQt6.QtCore import QSize
 import config.config as cfg
 
-class BarraHerramientasSuperior(QToolBar):
+class BarraSuperior(QToolBar):
     def __init__(self, parent):
         super().__init__("Barra principal")
         self.setIconSize(QSize(32, 32))        
@@ -19,7 +19,7 @@ class BarraHerramientasSuperior(QToolBar):
             logo_label.setPixmap(logo_pixmap)
             logo_label.setScaledContents(True)  # Permitir que QLabel escale bien la imagen
         
-        logo_label.setFixedSize(34, 34)
+        logo_label.setFixedSize(38, 38)
         self.addWidget(logo_label)
         
         # Añadir espacio flexible para empujar los siguientes botones a la derecha
@@ -34,7 +34,7 @@ class BarraHerramientasSuperior(QToolBar):
         cargar_icon_path = cfg.ICONOS["cargar"]
         cargar_action = QAction(QIcon(cargar_icon_path), "Cargar", parent)
         cargar_action.setCheckable(True) 
-        cargar_action.triggered.connect(lambda: self.cargarImagen(parent))
+        cargar_action.triggered.connect(lambda: self.opcionesBarraSuperior(parent, "cargar"))
         cargar_action.setShortcut(cfg.ATAJOS["cargar"])
         self.addAction(cargar_action)
         
@@ -48,29 +48,28 @@ class BarraHerramientasSuperior(QToolBar):
         guardar_icon_path = cfg.ICONOS["guardar"]
         guardar_action = QAction(QIcon(guardar_icon_path), "Guardar", parent)
         guardar_action.setCheckable(True) 
-        guardar_action.triggered.connect(lambda: self.guardarImagen(parent))
+        guardar_action.triggered.connect(lambda: self.opcionesBarraSuperior(parent, "guardar"))
         guardar_action.setShortcut(cfg.ATAJOS["guardar"])
         self.addAction(guardar_action)
-    
-    # Se obtiene la ruta del archivo para luego llamar a visor_imagen.py que es la que carga la imagen
-    def cargarImagen(self, parent):
-        filePath, _ = QFileDialog.getOpenFileName(parent, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
+            
+    def opcionesBarraSuperior(self, parent, tipo):
+        """Maneja la carga o guardado de imágenes según el tipo especificado."""
         
-        # Buscar quién fue el emisor (el botón que se presionó)
-        sender = self.sender()
-        if isinstance(sender, QAction) and sender.isCheckable():
-            sender.setChecked(False)  # Desmarca el botón
-        
-        if filePath:
-            parent.visor.cargarImagen(filePath)
+        if tipo == "cargar":
+            filePath, _ = QFileDialog.getOpenFileName(parent, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
+        elif tipo == "guardar":
+            filePath, _ = QFileDialog.getSaveFileName(parent, "Guardar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
+        else:
+            return  # Si el tipo no es válido, salir de la función
 
-    def guardarImagen(self, parent):
-        filePath, _ = QFileDialog.getSaveFileName(parent, "Guardar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
-        
         # Buscar quién fue el emisor (el botón que se presionó)
         sender = self.sender()
         if isinstance(sender, QAction) and sender.isCheckable():
-            sender.setChecked(False)  # Desmarca el botón
-        
+            sender.setChecked(False)  # Desmarcar el botón
+
         if filePath:
-            parent.visor.guardarImagen(filePath)
+            if tipo == "cargar":
+                parent.visor.cargarImagen(filePath)
+            elif tipo == "guardar":
+                parent.visor.guardarImagen(filePath)
+

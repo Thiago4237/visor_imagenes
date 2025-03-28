@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QToolBar, QComboBox, QDial, QPushButton, QDockWidget, QWidget, QLabel, QVBoxLayout, QSlider, QSpinBox
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtWidgets import ( QToolBar, QComboBox, QDial, QPushButton, QDockWidget, 
+                             QWidget, QLabel, QVBoxLayout, QSlider)
+from PyQt6.QtGui import QIcon, QAction, QActionGroup
+from PyQt6.QtCore import QSize, Qt
 import config.config as cfg
 
 class BarraLateral(QToolBar):
@@ -20,33 +21,50 @@ class BarraLateral(QToolBar):
         self.layoutOpciones = QVBoxLayout(self.widgetOpciones)
 
         parent.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_widget)
+        # self.dock_widget.visibilityChanged.connect(self.refrescarVisor) # Conectar la señal de visibilidad al método refrescarVisor                
 
         # Botones de acción
         self.initActions()
 
+    # def refrescarVisor(self):
+    #         """Forza la actualización del visor cuando la barra lateral se oculta/muestra."""
+    #         if hasattr(self.parent, 'visor'):
+    #             self.parent.visor.update()  # Forzar repintado del visor
+
     def initActions(self):
+        action_group = QActionGroup(self)  # Crear un grupo para las acciones
+        action_group.setExclusive(True)  # Solo una acción puede estar activada a la vez
+
         ajustes_basicos_icon_path = cfg.ICONOS["ajustesBasicos"]
         ajustes_basicos_action = QAction(QIcon(ajustes_basicos_icon_path), "Ajustes Básicos", self)
-        ajustes_basicos_action.setCheckable(True) 
+        ajustes_basicos_action.setCheckable(True)  
         ajustes_basicos_action.triggered.connect(lambda: self.mostrarOpciones("Básicos"))
         self.addAction(ajustes_basicos_action)
+        action_group.addAction(ajustes_basicos_action) 
 
         ajustes_filtros_icon_path = cfg.ICONOS["ajustesDeFiltros"]
         ajustes_filtros_action = QAction(QIcon(ajustes_filtros_icon_path), "Ajustes de Filtros", self)
-        ajustes_basicos_action.setCheckable(True) 
+        ajustes_filtros_action.setCheckable(True)  
         ajustes_filtros_action.triggered.connect(lambda: self.mostrarOpciones("de Filtros"))
         self.addAction(ajustes_filtros_action)
+        action_group.addAction(ajustes_filtros_action)  
 
         ajustes_avanzados_icon_path = cfg.ICONOS["ajustesAvanzados"]
         ajustes_avanzados_action = QAction(QIcon(ajustes_avanzados_icon_path), "Ajustes Avanzados", self)
-        ajustes_avanzados_action.setCheckable(True) 
+        ajustes_avanzados_action.setCheckable(True)  
         ajustes_avanzados_action.triggered.connect(lambda: self.mostrarOpciones("Avanzados"))
         self.addAction(ajustes_avanzados_action)
+        action_group.addAction(ajustes_avanzados_action) 
+
 
     def mostrarOpciones(self, tipo):
         """Muestra u oculta el panel lateral con las opciones correspondientes."""
+        sender_action = self.sender()  # Obtener la acción que activó la señal
+
         if self.dock_widget.isVisible() and self.dock_widget.windowTitle() == f"Ajustes {tipo}":
             self.dock_widget.setVisible(False)  # Ocultar si ya está abierto con la misma opción
+            if sender_action:
+                sender_action.setChecked(False)  # Desmarcar el botón
             return
 
         # Limpiar cualquier widget previo en el dock
@@ -59,13 +77,11 @@ class BarraLateral(QToolBar):
         widget_opciones = QWidget()
         layout = QVBoxLayout(widget_opciones)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        
-        # label = QLabel(f"Ajustes {tipo}")
-        # layout.addWidget(label)
-        
+
         # Ajustar tamaño del widget
         widget_opciones.setMinimumSize(250, 400)  # Ancho: 250px, Alto: 400px
         self.dock_widget.setMinimumSize(250, 400)  # También aplicarlo al DockWidget para que crezca
+        self.dock_widget.setVisible(True)  # Mostrar el panel                
 
         # -------------------------------------------------
         # Botón "Invertir colores"

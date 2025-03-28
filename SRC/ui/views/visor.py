@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
 from PyQt6.QtGui import QIcon 
 from PyQt6.QtCore import Qt
-from ui.components.barra_superior import BarraHerramientasSuperior
+from ui.components.barra_superior import BarraSuperior
 from ui.components.barra_lateral import BarraLateral
 from ui.components.visor_imagen import VisorImagen
 from ui import styles as st
@@ -23,13 +23,15 @@ class VisorImagenes(QMainWindow):
         self.setWindowIcon(QIcon(icon_path))
 
         # Crear barra de herramientas Superior
-        toolbar = BarraHerramientasSuperior(self)
-        self.setStyleSheet(st.TOOLBAR_STYLE)
+        toolbar = BarraSuperior(self)
         self.addToolBar(toolbar)
         
         # Barra lateral derecha
         toolbar_lateral = BarraLateral(self)
         self.addToolBar(Qt.ToolBarArea.RightToolBarArea, toolbar_lateral)
+        
+        #Estilos de las barras
+        self.setStyleSheet(st.TOOLBAR_STYLE)
 
         # Contenedor principal
         contenedor = QWidget()
