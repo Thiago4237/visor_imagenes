@@ -1,5 +1,5 @@
 import os
-from PyQt6.QtWidgets import QToolBar, QLabel, QWidget, QSizePolicy, QFileDialog
+from PyQt6.QtWidgets import QToolBar, QLabel, QWidget, QSizePolicy, QFileDialog, QComboBox
 from PyQt6.QtGui import QIcon, QPixmap, QAction
 from PyQt6.QtCore import QSize
 import config.config as cfg
@@ -7,6 +7,7 @@ import config.config as cfg
 class BarraSuperior(QToolBar):
     def __init__(self, parent):
         super().__init__("Barra principal")
+        self.parent_widget = parent  # Almacenar referencia al parent
         self.setIconSize(QSize(32, 32))        
         
         # Agregar logo a la izquierda
@@ -14,62 +15,98 @@ class BarraSuperior(QToolBar):
         logo_label = QLabel()
         logo_pixmap = QPixmap(logo_path)
         
-        # # Verificar que la imagen se cargó correctamente
         if not logo_pixmap.isNull():
             logo_label.setPixmap(logo_pixmap)
             logo_label.setScaledContents(True)  # Permitir que QLabel escale bien la imagen
         
+        # Tamaño del logo
         logo_label.setFixedSize(38, 38)
         self.addWidget(logo_label)
         
-        # Añadir espacio flexible para empujar los siguientes botones a la derecha
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.addWidget(spacer)
-        
+        # Añadir espacio flexible para empujar los botones a la derecha
+        spacer_left = QWidget()
+        spacer_left.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.addWidget(spacer_left)
+
+        # Añadir espacio flexible para empujar los botones a la izquierda
+        spacer_right = QWidget()
+        spacer_right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.addWidget(spacer_right)
+
         # Botones de acción
-        self.initActionsTop(parent)
+        self.initActionsTop()
     
-    def initActionsTop(self, parent):
-        cargar_icon_path = cfg.ICONOS["cargar"]
-        cargar_action = QAction(QIcon(cargar_icon_path), "Cargar", parent)
-        cargar_action.setCheckable(True) 
-        cargar_action.triggered.connect(lambda: self.opcionesBarraSuperior(parent, "cargar"))
+    def initActionsTop(self):
+        """Inicializa y agrega los botones a la barra de herramientas."""
+
+        # Botón de Deshacer
+        deshacer_action = self.createAction("deshacer", "Deshacer", self.deshacerCambios)
+        self.addAction(deshacer_action)
+
+        # Botón de Rehacer
+        rehacer_action = self.createAction("rehacer", "Rehacer", self.rehacerCambios)
+        self.addAction(rehacer_action)
+
+        self.addSeparator()  # Separador entre botones
+
+        # Botón de Cargar
+        cargar_action = self.createAction("cargar", "Cargar", self.cargarImagen)
         cargar_action.setShortcut(cfg.ATAJOS["cargar"])
         self.addAction(cargar_action)
-        
-        actualizar_icon_path = cfg.ICONOS["actualizar"]
-        actualizar_action = QAction(QIcon(actualizar_icon_path), "Actualizar", parent)
-        actualizar_action.setCheckable(True) 
-        # actualizar_action.triggered.connect(parent.self.mostrarImagen) # Aún no esta
+
+        # Botón de Actualizar
+        actualizar_action = self.createAction("actualizar", "Actualizar", self.actualizarImagen)
         actualizar_action.setShortcut(cfg.ATAJOS["actualizar"])
         self.addAction(actualizar_action)
-        
-        guardar_icon_path = cfg.ICONOS["guardar"]
-        guardar_action = QAction(QIcon(guardar_icon_path), "Guardar", parent)
-        guardar_action.setCheckable(True) 
-        guardar_action.triggered.connect(lambda: self.opcionesBarraSuperior(parent, "guardar"))
+
+        # Botón de Guardar
+        guardar_action = self.createAction("guardar", "Guardar", self.guardarImagen)
         guardar_action.setShortcut(cfg.ATAJOS["guardar"])
         self.addAction(guardar_action)
-            
-    def opcionesBarraSuperior(self, parent, tipo):
-        """Maneja la carga o guardado de imágenes según el tipo especificado."""
-        
-        if tipo == "cargar":
-            filePath, _ = QFileDialog.getOpenFileName(parent, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
-        elif tipo == "guardar":
-            filePath, _ = QFileDialog.getSaveFileName(parent, "Guardar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
-        else:
-            return  # Si el tipo no es válido, salir de la función
 
-        # Buscar quién fue el emisor (el botón que se presionó)
+    def createAction(self, icono_nombre, texto, callback):
+        """
+        Crea un botón de acción con su respectivo icono, texto y función asociada.
+        """
+        icono_path = cfg.ICONOS[icono_nombre]
+        action = QAction(QIcon(icono_path), texto, self.parent_widget)
+        action.setCheckable(True)
+        action.triggered.connect(callback)
+        return action
+
+    def cargarImagen(self):
+        """Abre un cuadro de diálogo para seleccionar y cargar una imagen."""
+        filePath, _ = QFileDialog.getOpenFileName(self.parent_widget, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
+        if filePath:
+            self.parent_widget.visor.cargarImagen(filePath)
+        self.desmarcarBoton()
+
+    def guardarImagen(self):
+        """Abre un cuadro de diálogo para guardar la imagen actual."""
+    def guardarImagen(self):
+        """Abre un cuadro de diálogo para guardar la imagen actual."""
+        filePath, _ = QFileDialog.getSaveFileName(self.parent_widget, "Guardar imagen", "", "Imágenes (*.png *.jpg *.bmp)")
+        if filePath:
+            self.parent_widget.visor.guardarImagen(filePath)
+        self.desmarcarBoton()
+
+    def actualizarImagen(self):
+        """Llama a la función de actualizar imagen en el visor."""
+        self.parent_widget.visor.actualizarImagen()
+        self.desmarcarBoton()
+
+    def deshacerCambios(self):
+        """Llama a la función de deshacer en el visor de imágenes."""
+        self.parent_widget.visor.deshacerCambios()
+        self.desmarcarBoton()
+
+    def rehacerCambios(self):
+        """Llama a la función de rehacer en el visor de imágenes."""
+        self.parent_widget.visor.rehacerCambios()
+        self.desmarcarBoton()
+
+    def desmarcarBoton(self):
+        """Desmarca el botón después de hacer clic."""
         sender = self.sender()
         if isinstance(sender, QAction) and sender.isCheckable():
-            sender.setChecked(False)  # Desmarcar el botón
-
-        if filePath:
-            if tipo == "cargar":
-                parent.visor.cargarImagen(filePath)
-            elif tipo == "guardar":
-                parent.visor.guardarImagen(filePath)
-
+            sender.setChecked(False)

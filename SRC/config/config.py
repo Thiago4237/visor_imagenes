@@ -29,6 +29,8 @@ ICONOS = {
     "ajustesBasicos": get_icon_path("ajustesBasicos2.png"),
     "ajustesDeFiltros": get_icon_path("ajustesFiltros.png"),
     "ajustesAvanzados": get_icon_path("ajustesAvanzados.png"),
+    "deshacer": get_icon_path("deshacer.png"),
+    "rehacer": get_icon_path("rehacer.png"),
 }
 
 # Atajos de teclado

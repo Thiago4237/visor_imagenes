@@ -6,12 +6,17 @@ from logic import libreriaManipulacion as lm
 from ui import styles as st
 
 class VisorImagen(QWidget):
-    
+    """
+    Clase que maneja la visualización y manipulación de imágenes en la interfaz gráfica.
+    Permite cargar imágenes, aplicar modificaciones y gestionar el historial de cambios.
+    """
     def __init__(self):
         super().__init__()
         self.imagen = None
         self.imagen_base = None
         self.imagen_original = None
+        self.historial = []  # Pila para deshacer cambios
+        self.redo_stack = []  # Pila para rehacer cambios
         self.zoom_factor = 1.0
         self.initUI()
         
@@ -26,6 +31,7 @@ class VisorImagen(QWidget):
         return super().event(event)
 
     def initUI(self):
+        """Inicializa la interfaz gráfica del visor de imágenes."""
         layout_principal = QVBoxLayout(self)
         
         # Área de imagen
@@ -47,16 +53,19 @@ class VisorImagen(QWidget):
         layout_principal.addLayout(layout_ruta)
     
     def cargarImagen(self, filePath):
+        """Carga una imagen desde un archivo y la muestra en el visor."""
         if filePath:
-
             self.imagen_original = lm.cargar_imagen(filePath)  # Guardar original
-            self.imagen_base = self.imagen_original.copy()  # Base para modificaciones
+            # self.imagen_base = self.imagen_original.copy()  # Base para modificaciones
             self.imagen = self.imagen_original.copy()  # Imagen visualizada
+            self.historial = [self.imagen.copy()]  # Iniciar historial con la imagen original
+            self.redo_stack.clear()  # Limpiar pila de rehacer
             self.zoom_factor = 1.0 
             self.mostrarImagen()
             self.barraRuta.setText(filePath)
     
     def mostrarImagen(self):
+        """Muestra la imagen actual en el QLabel de la interfaz."""
         if self.imagen is not None:
             img = (self.imagen * 255).astype(np.uint8)
             
@@ -84,10 +93,41 @@ class VisorImagen(QWidget):
             self.labelImagen.setAlignment(Qt.AlignmentFlag.AlignCenter)
     
     def guardarImagen(self, filePath):
+        """Guarda la imagen actual en la ruta especificada."""
         if self.imagen is not None and filePath:
             lm.guardar_imagen(filePath, self.imagen)
+            
+    def deshacerCambios(self):
+        """Revierte la imagen al estado anterior en el historial."""
+        if len(self.historial) > 1:
+            self.redo_stack.append(self.historial.pop())  # Guardar el estado actual en rehacer
+            self.imagen = self.historial[-1].copy()  # Volver al estado anterior
+            self.mostrarImagen()
+    
+    def rehacerCambios(self):
+        """Restaura la imagen al estado posterior si se ha deshecho una acción."""
+        if self.redo_stack:
+            self.imagen = self.redo_stack.pop().copy()  # Recuperar el último estado deshecho
+            self.historial.append(self.imagen.copy())  # Guardarlo en el historial nuevamente
+            self.mostrarImagen()
+    
+    def actualizarImagen(self):
+        """Convierte la imagen actual en la nueva imagen base sin borrar el historial anterior."""
+        if self.imagen is not None:
+            self.imagen_base = self.imagen.copy()  # Establece la imagen actual como base
+            self.historial = [self.imagen.copy()]  # No borra historial de inmediato
+            self.redo_stack.clear()  # Borra rehacer para evitar inconsistencias
+            self.mostrarImagen()
+            
+    def guardarEnHistorial(self):
+        """Guarda la imagen actual en el historial sin afectar la funcionalidad de actualización."""
+        if self.imagen is not None:
+            if not self.historial or not np.array_equal(self.imagen, self.historial[-1]):
+                self.historial.append(self.imagen.copy())  # Guarda el estado actual en historial
+                self.redo_stack.clear()  # Limpia el historial de rehacer
     
     def resizeEvent(self, event):
+        """Actualiza la imagen al redimensionar la ventana."""
         super().resizeEvent(event)
         if self.imagen is not None:
             self.mostrarImagen()
@@ -99,36 +139,43 @@ class VisorImagen(QWidget):
         """
         if self.imagen is not None:
             self.imagen = lm.invertirColoresImagen(self.imagen)
-            self.imagen_base = self.imagen.copy() # Actualizar base modificada
-            self.mostrarImagen()
+            # self.imagen = self.imagen.copy() # Actualizar base modificada
+            self.guardarEnHistorial() 
+            self.mostrarImagen()    
 
     def aplicarAjusteBrillo(self, valor):
-        if self.imagen_base is not None:
-            self.imagen = lm.ajusteBrillo(self.imagen_base, valor)
+        """Ajusta el brillo de la imagen según el valor especificado."""
+        if self.imagen is not None:
+            self.imagen = lm.ajusteBrillo(self.imagen, valor)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def ajustarContrastePositivo(self, valor):
         """ Ajusta el contraste usando el valor del slider """
-        if self.imagen_base is not None:
-            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 1)
+        if self.imagen is not None:
+            self.imagen = lm.ajusteContraste(self.imagen, valor, 1)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
             
     def ajustarContrasteNegativo(self, valor):
         """ Ajusta el contraste usando el valor del slider """
-        if self.imagen_base is not None:
-            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 0)
+        if self.imagen is not None:
+            self.imagen = lm.ajusteContraste(self.imagen, valor, 0)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def binarizarImagen(self):
         """ Binariza la imagen actual """
-        if self.imagen_base is not None:
-            self.imagen = lm.binarizar_imagen(self.imagen_base)
+        if self.imagen is not None:
+            self.imagen = lm.binarizar_imagen(self.imagen)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def aplicarRotacion(self, angulo):
         """ Aplica la rotación a la imagen y actualiza la vista. """
-        if self.imagen_base is not None:
-            self.imagen = lm.rotar_imagen(self.imagen_base, angulo)
+        if self.imagen is not None:
+            self.imagen = lm.rotar_imagen(self.imagen, angulo)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def reiniciarImagen(self):
@@ -138,22 +185,23 @@ class VisorImagen(QWidget):
             self.mostrarImagen()
 
     def aplicarCapaImagen(self, imagen_capa):
-        """ Aplica la capa de imagen a la imagen base """
-        if self.imagen_base is not None:
-            self.imagen = lm.capaImagen(self.imagen_base, imagen_capa)
+        """ Aplica la capa de imagen a la imagen """
+        if self.imagen is not None:
+            self.imagen = lm.capaImagen(self.imagen, imagen_capa)
+            self.guardarEnHistorial()
             self.mostrarImagen()
 
-
     def aplicarQuitarCanal(self, canal):
-        """ Aplica o quita el canal de la imagen base """
-        if self.imagen_base is not None:
-            self.imagen = lm.quitarCanal(self.imagen_base, canal)
+        """ Aplica o quita el canal de la imagen """
+        if self.imagen is not None:
+            self.imagen = lm.quitarCanal(self.imagen, canal)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
     
     def aplicarZoom(self, factor, cursor_x=None, cursor_y=None):
         """Aplica zoom a la imagen basada en un factor y opcionalmente en la posición del cursor."""
-        if self.imagen_base is not None:
-            h, w = self.imagen_base.shape[:2]
+        if self.imagen is not None:
+            h, w = self.imagen.shape[:2]
             
             if cursor_x is None or cursor_y is None:
                 cursor_x, cursor_y = w // 2, h // 2  # Zoom centrado si no se proporciona posición
@@ -161,7 +209,8 @@ class VisorImagen(QWidget):
             self.zoom_factor *= factor
             self.zoom_factor = max(0.1, min(self.zoom_factor, 5.0))  # Limitar el zoom
             
-            self.imagen = lm.aplicar_zoom(self.imagen_base, self.zoom_factor, cursor_x, cursor_y)
+            self.imagen = lm.aplicar_zoom(self.imagen, self.zoom_factor, cursor_x, cursor_y)
+            self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def setZoomCombo(self, zoom_text, cursor_x=None, cursor_y=None):
@@ -177,13 +226,13 @@ class VisorImagen(QWidget):
         
         factor = zoom_value / 100.0  # 1.0 es tamaño normal
 
-        if self.imagen_base is not None:
-            h, w = self.imagen_base.shape[:2]
+        if self.imagen is not None:
+            h, w = self.imagen.shape[:2]
             # Si no se provee la posición, se toma el centro de la imagen
             if cursor_x is None or cursor_y is None:
                 cursor_x, cursor_y = w // 2, h // 2
             self.zoom_factor = factor
-            self.imagen = lm.aplicar_zoom(self.imagen_base, self.zoom_factor, cursor_x, cursor_y)
+            self.imagen = lm.aplicar_zoom(self.imagen, self.zoom_factor, cursor_x, cursor_y)
             self.mostrarImagen()
 
     def wheelEvent(self, event: QWheelEvent):
@@ -200,9 +249,9 @@ class VisorImagen(QWidget):
 
         # Calcular la posición del cursor sobre la imagen mostrada:
         label_size = self.labelImagen.size()
-        if self.imagen_base is None:
+        if self.imagen is None:
             return
-        img_h, img_w = self.imagen_base.shape[:2]
+        img_h, img_w = self.imagen.shape[:2]
         scale = min(label_size.width() / img_w, label_size.height() / img_h)
         offset_x = (label_size.width() - img_w * scale) / 2
         offset_y = (label_size.height() - img_h * scale) / 2
@@ -219,9 +268,9 @@ class VisorImagen(QWidget):
             center_global = pinch.centerPoint().toPoint()
             center_local = self.labelImagen.mapFromGlobal(center_global)
             label_size = self.labelImagen.size()
-            if self.imagen_base is None:
+            if self.imagen is None:
                 return True
-            img_h, img_w = self.imagen_base.shape[:2]
+            img_h, img_w = self.imagen.shape[:2]
             scale = min(label_size.width() / img_w, label_size.height() / img_h)
             offset_x = (label_size.width() - img_w * scale) / 2
             offset_y = (label_size.height() - img_h * scale) / 2
@@ -239,10 +288,11 @@ class VisorImagen(QWidget):
         - modo (str): 'claras' o 'oscuras'.
         - color (list): Color en formato RGB normalizado.
         """
-        if self.imagen_base is not None:
+        if self.imagen is not None:
             # Llama a la función de la librería de manipulación
-            self.imagen = lm.filtrar_zonas_claras_oscuras(self.imagen_base, umbral, modo, color)
-            self.mostrarImagen()
+            self.imagen = lm.filtrar_zonas_claras_oscuras(self.imagen, umbral, modo, color)     
+            self.guardarEnHistorial()       
+            self.mostrarImagen()            
 
     def mostrarHistograma(self):
         if self.imagen is not None:

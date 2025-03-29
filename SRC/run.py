@@ -3,8 +3,7 @@ from PyQt6.QtWidgets import QApplication
 import sys
 
 def main():
-    app = QApplication(sys.argv)
-    # app.setStyleSheet("* { font-family: 'Arial'; }")
+    app = QApplication(sys.argv)    
     ventana = VisorImagenes()
     ventana.show()
     sys.exit(app.exec())

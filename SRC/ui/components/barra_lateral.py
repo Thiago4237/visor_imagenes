@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import ( QToolBar, QComboBox, QDial, QPushButton, QDockWidget, 
                              QWidget, QLabel, QVBoxLayout, QSlider)
-from PyQt6.QtGui import QIcon, QAction, QActionGroup, QWheelEvent
+from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from PyQt6.QtCore import QSize, Qt
 import config.config as cfg
 
@@ -84,13 +84,7 @@ class BarraLateral(QToolBar):
         widget_opciones.setMinimumSize(250, 400)  # Ancho: 250px, Alto: 400px
         self.dock_widget.setMinimumSize(250, 400)  # También aplicarlo al DockWidget para que crezca
         self.dock_widget.setVisible(True)  # Mostrar el panel                
-
-        # -------------------------------------------------
-        # Botón "Invertir colores"
-        # -------------------------------------------------
-        btn_reiniciar = QPushButton("deshacer modificaciones")
-        btn_reiniciar.clicked.connect(self.parent.visor.reiniciarImagen)
-        layout.addWidget(btn_reiniciar)
+        
 
         if tipo == "Básicos":
             
@@ -305,6 +299,13 @@ class BarraLateral(QToolBar):
             )
 
             layout.addWidget(self.combo_zoom)
+            
+            # -------------------------------------------------
+            # Botón "Deshacer Modificaciones"
+            # -------------------------------------------------            
+            btn_reiniciar = QPushButton("deshacer modificaciones")
+            btn_reiniciar.clicked.connect(self.parent.visor.reiniciarImagen)
+            layout.addWidget(btn_reiniciar)
 
         widget_opciones.setLayout(layout)
 

@@ -21,6 +21,12 @@ TOOLBAR_STYLE = """
         background-color: #1F4287 !important;
         border-radius: 5px;
     }
+    
+    QToolBar::separator {
+        background-color: #666666;
+        width: 1px;
+        margin: 4px 8px;
+    }
 """
 
 
