@@ -247,7 +247,5 @@ class VisorImagen(QWidget):
     def mostrarHistograma(self):
         if self.imagen is not None:
             lm.histograma_imagen(self.imagen)
-            import matplotlib.pyplot as plt
-            plt.show()
 
 

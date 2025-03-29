@@ -295,37 +295,29 @@ def binarizar_imagen(img, umbral=0.5):
     return img_binaria
 
 # histograma
-def histograma_imagen(img, bins=50, color='r', alpha=0.5, ax=None):
-    """
-    Genera y muestra un histograma de una imagen dada.
-    
-    Parámetros:
-    img (ndarray): Imagen en formato de matriz numpy.
-    bins (int): Número de divisiones en el histograma (por defecto 50).
-    color (str): Color de las barras del histograma (por defecto 'r' - rojo).
-    alpha (float): Transparencia de las barras (por defecto 0.5).
-    ax (matplotlib.axes._subplots.AxesSubplot, opcional): 
-        Eje donde se dibujará el histograma. Si es None, se crea una nueva figura.
-    
-    Retorna:
-    None
-    """
-    img_flatten = img.flatten()  # Aplanar la imagen a un array 1D
+def histograma_imagen(img, bins=50, alpha=0.5):
+    # Asegurar que la imagen está en rango 0-255 si es necesario
+    if img.max() <= 1.0:
+        img = (img * 255).astype(np.uint8)
 
-    # Si no se proporciona un eje, crear uno nuevo
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(6, 4))
-    
-    ax.hist(img_flatten, bins=bins, facecolor=color, alpha=alpha)
-    ax.set_title("Histograma de la Imagen")
-    ax.set_xlabel("Intensidad de píxeles")
-    ax.set_ylabel("Frecuencia")
+    colores = ['r', 'g', 'b']
+    nombres = ['Canal Rojo', 'Canal Verde', 'Canal Azul']
 
-    # Mostrar la figura solo si no se usó un eje externo
-    if ax is None:
-        plt.show()
+    fig, axes = plt.subplots(3, 1, figsize=(6, 8))  # 3 filas, 1 columna
 
+    # Generar un histograma separado por cada canal
+    for i, ax in enumerate(axes):
+        canal = img[..., i].flatten()
+        ax.hist(canal, bins=bins, color=colores[i], alpha=alpha)
+        ax.set_title(nombres[i])
+        ax.set_xlabel("Intensidad de píxeles")
+        ax.set_ylabel("Frecuencia")
+        ax.set_xlim([0, 255])  # Asegurar que los ejes sean consistentes
 
+    plt.tight_layout()
+    plt.show()
+
+# filtro de zonas claras 
 def filtrar_zonas_claras_oscuras(img, umbral=0.5, modo="claras", color=[1, 0, 0]):
     """
     Aplica un filtro de color a las zonas claras u oscuras de una imagen.
