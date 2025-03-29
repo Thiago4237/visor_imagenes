@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import ( QToolBar, QComboBox, QDial, QPushButton, QDockWidget, 
                              QWidget, QLabel, QVBoxLayout, QSlider)
-from PyQt6.QtGui import QIcon, QAction, QActionGroup
+from PyQt6.QtGui import QIcon, QAction, QActionGroup, QWheelEvent
 from PyQt6.QtCore import QSize, Qt
 import config.config as cfg
 
 class BarraLateral(QToolBar):
+    
     def __init__(self, parent):
         super().__init__("Barra lateral")
         self.setOrientation(Qt.Orientation.Vertical)
@@ -69,7 +70,8 @@ class BarraLateral(QToolBar):
 
         # Limpiar cualquier widget previo en el dock
         for i in reversed(range(self.layoutOpciones.count())):
-            widget_to_remove = self.layoutOpciones.itemAt(i).widget()
+            # widget_to_remove = self.layoutOpciones.itemAt(i).widget()
+            widget_to_remove = self.layoutOpciones.takeAt(i).widget()
             if widget_to_remove is not None:
                 widget_to_remove.deleteLater()
 
@@ -109,28 +111,28 @@ class BarraLateral(QToolBar):
             # -------------------------------------------------
             # 🔹 Slider para contraste negativo
             # -------------------------------------------------
-            self.sliderContraste = QSlider(Qt.Orientation.Horizontal)
-            self.sliderContraste.setMinimum(1)   # Equivalente a 0.01
-            self.sliderContraste.setMaximum(100)  # Equivalente a 1.0
-            self.sliderContraste.setValue(1)    # Neutro = 0.01
-            self.sliderContraste.setSingleStep(1)
-            self.sliderContraste.valueChanged.connect(lambda val: self.parent.visor.ajustarContrasteNegativo(self.cambiarValorSlider(val)))
+            self.sliderContrasteNegativo = QSlider(Qt.Orientation.Horizontal)
+            self.sliderContrasteNegativo.setMinimum(1)   # Equivalente a 0.01
+            self.sliderContrasteNegativo.setMaximum(100)  # Equivalente a 1.0
+            self.sliderContrasteNegativo.setValue(1)    # Neutro = 0.01
+            self.sliderContrasteNegativo.setSingleStep(1)
+            self.sliderContrasteNegativo.valueChanged.connect(lambda val: self.parent.visor.ajustarContrasteNegativo(self.cambiarValorSlider(val)))
 
             layout.addWidget(QLabel("Contraste negativo"))
-            layout.addWidget(self.sliderContraste)
+            layout.addWidget(self.sliderContrasteNegativo)
             
             # -------------------------------------------------
             # 🔹 Slider para contraste positivo
             # -------------------------------------------------
-            self.sliderContraste = QSlider(Qt.Orientation.Horizontal)
-            self.sliderContraste.setMinimum(1)   # Equivalente a 0.01
-            self.sliderContraste.setMaximum(100)  # Equivalente a 1.0
-            self.sliderContraste.setValue(100)    # Neutro = 1.0
-            self.sliderContraste.setSingleStep(1)
-            self.sliderContraste.valueChanged.connect(lambda val: self.parent.visor.ajustarContrastePositivo(self.cambiarValorSlider(val)))
+            self.sliderContrastePositivo = QSlider(Qt.Orientation.Horizontal)
+            self.sliderContrastePositivo.setMinimum(1)   # Equivalente a 0.01
+            self.sliderContrastePositivo.setMaximum(100)  # Equivalente a 1.0
+            self.sliderContrastePositivo.setValue(100)    # Neutro = 1.0
+            self.sliderContrastePositivo.setSingleStep(1)
+            self.sliderContrastePositivo.valueChanged.connect(lambda val: self.parent.visor.ajustarContrastePositivo(self.cambiarValorSlider(val)))
 
             layout.addWidget(QLabel("Contraste positivo"))
-            layout.addWidget(self.sliderContraste)
+            layout.addWidget(self.sliderContrastePositivo)
 
             # -------------------------------------------------
             # Crear el input para la rotación
@@ -167,6 +169,41 @@ class BarraLateral(QToolBar):
             # -------------------------------------------------
             # Botón "Invertir colores"
             # -------------------------------------------------
+            # Sección para filtrar zonas claras u oscuras
+            layout.addWidget(QLabel("Filtrar Zonas Claras/Oscuras"))
+
+            # Combo para seleccionar el modo ('claras' o 'oscuras')
+            self.combo_modoFiltro = QComboBox()
+            self.combo_modoFiltro.addItems(["claras", "oscuras"])
+            layout.addWidget(QLabel("Modo"))
+            layout.addWidget(self.combo_modoFiltro)
+
+            # Slider para definir el umbral (0 a 100, que luego se normaliza)
+            self.slider_umbral = QSlider(Qt.Orientation.Horizontal)
+            self.slider_umbral.setMinimum(0)
+            self.slider_umbral.setMaximum(100)
+            self.slider_umbral.setValue(50)  # Umbral por defecto 0.5
+            self.slider_umbral.setTickInterval(10)
+            self.slider_umbral.setSingleStep(1)
+            layout.addWidget(QLabel("Umbral"))
+            layout.addWidget(self.slider_umbral)
+
+            # Combo para seleccionar el color del filtro
+            self.combo_colorFiltro = QComboBox()
+            # Definimos algunas opciones de color (puedes extender esta lista)
+            colores = {"Rojo": "[1, 0, 0]", "Verde": "[0, 1, 0]", "Azul": "[0, 0, 1]"}
+            self.combo_colorFiltro.addItems(list(colores.keys()))
+            layout.addWidget(QLabel("Color del filtro"))
+            layout.addWidget(self.combo_colorFiltro)
+
+            # Botón para aplicar el filtro
+            btn_aplicarFiltro = QPushButton("Aplicar Filtro")
+            btn_aplicarFiltro.clicked.connect(lambda: self.aplicarFiltroZonas())
+            layout.addWidget(btn_aplicarFiltro)
+            
+            # -------------------------------------------------
+            # Botón "Invertir colores"
+            # -------------------------------------------------
             layout.addWidget(QLabel("Invertir Colores"))
             btn_invertir_color = QPushButton("Invertir")
             btn_invertir_color.clicked.connect(self.parent.visor.invertirColoresImagen)
@@ -187,12 +224,6 @@ class BarraLateral(QToolBar):
             }
             self.combo_capa.addItems(capas.keys())
             self.combo_capa.setCurrentText("RGB (Todas)")
-
-            # Función para aplicar la selección de capa
-            def aplicarCapaSeleccionada():
-                nombre_capa = self.combo_capa.currentText()
-                indice_capa = capas[nombre_capa]
-                self.parent.visor.aplicarCapaImagen(indice_capa)
                 
             # Función para aplicar la selección de capa
             def aplicarCapaSeleccionada():
@@ -244,11 +275,36 @@ class BarraLateral(QToolBar):
         if tipo == 'Avanzados':
             
             # -------------------------------------------------
+            # Botón "Mostrar Histograma"
+            # -------------------------------------------------
+            btn_histograma = QPushButton("Mostrar Histograma")
+            btn_histograma.clicked.connect(self.parent.visor.mostrarHistograma)
+            layout.addWidget(btn_histograma)
+            
+            # -------------------------------------------------
             # Botón "binarizar"
             # -------------------------------------------------
             btn_binarizar = QPushButton("Binarizar")
             btn_binarizar.clicked.connect(self.parent.visor.binarizarImagen)
             layout.addWidget(btn_binarizar)
+ 
+            # -------------------------------------------------
+            # zoom
+            # -------------------------------------------------
+            layout.addWidget(QLabel("Zoom de Imagen"))
+
+            self.combo_zoom = QComboBox()
+            # Lista de opciones: de 50% a 150% (ajusta el rango si lo deseas)
+            zoom_values = [f"{i}%" for i in range(100, 301, 10)]
+            self.combo_zoom.addItems(zoom_values)
+            self.combo_zoom.setCurrentText("100%")  # Tamaño normal
+
+            # Conectar la selección para aplicar el zoom
+            self.combo_zoom.currentIndexChanged.connect(
+                lambda: self.parent.visor.setZoomCombo(self.combo_zoom.currentText())
+            )
+
+            layout.addWidget(self.combo_zoom)
 
         widget_opciones.setLayout(layout)
 
@@ -262,4 +318,19 @@ class BarraLateral(QToolBar):
         """Convierte el valor de 0-100 a 0-1 y lo retorna"""
         valor_normalizado = valor / 100.0
         return valor_normalizado
+    
+    def aplicarFiltroZonas(self):
+    # Obtener los valores seleccionados
+        umbral = self.slider_umbral.value() / 100.0  # Normalizamos (0.0 - 1.0)
+        modo = self.combo_modoFiltro.currentText()
         
+        # Mapeo de nombre de color a valor RGB (normalizado)
+        colores = {
+            "Rojo": [1, 0, 0],
+            "Verde": [0, 1, 0],
+            "Azul": [0, 0, 1]
+        }
+        color = colores.get(self.combo_colorFiltro.currentText(), [1, 0, 0])
+        
+        # Llama al método del visor para aplicar el filtro
+        self.parent.visor.aplicarFiltroZonas(umbral, modo, color)

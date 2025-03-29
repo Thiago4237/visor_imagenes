@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 # cargar imagen
 def cargar_imagen(ruta):
@@ -231,25 +232,32 @@ def rotar_imagen(img, angulo):
     return np.clip(img_rotada, 0, 1)
 
 # aplicar zoom
-def aplicar_zoom(img, x_inicio, y_inicio, ancho, alto):
+def aplicar_zoom(img, factor, x_centro, y_centro):
     """
-    Realiza un zoom en una parte de la imagen.
-
+    Aplica zoom en una imagen centrado en un punto específico.
+    
     Parámetros:
     - img: Imagen como array de NumPy.
-    - x_inicio: Coordenada X del inicio del recorte.
-    - y_inicio: Coordenada Y del inicio del recorte.
-    - ancho: Ancho del área de zoom.
-    - alto: Alto del área de zoom.
-
+    - factor: Factor de zoom (>1 para acercar, <1 para alejar).
+    - x_centro: Coordenada X del centro de zoom.
+    - y_centro: Coordenada Y del centro de zoom.
+    
     Retorna:
-    - Imagen recortada con zoom.
+    - Imagen escalada con zoom.
     """
     h, w = img.shape[:2]
-    x_fin = min(x_inicio + ancho, w)
-    y_fin = min(y_inicio + alto, h)
+    nuevo_ancho = int(w / factor)
+    nuevo_alto = int(h / factor)
     
-    return img[y_inicio:y_fin, x_inicio:x_fin]
+    x_inicio = max(0, int(x_centro - nuevo_ancho / 2))
+    y_inicio = max(0, int(y_centro - nuevo_alto / 2))
+    x_fin = min(w, x_inicio + nuevo_ancho)
+    y_fin = min(h, y_inicio + nuevo_alto)
+    
+    img_zoom = img[y_inicio:y_fin, x_inicio:x_fin]
+    img_zoom = cv2.resize(img_zoom, (w, h), interpolation=cv2.INTER_LINEAR)
+    
+    return img_zoom
 
 # guardar imagen 
 def guardar_imagen(ruta, img):
