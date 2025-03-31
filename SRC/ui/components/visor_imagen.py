@@ -467,8 +467,8 @@ class VisorImagen(QWidget):
               utilizando `mostrarImagen`.
         """
         
-        if self.imagen_base is not None:
-            self.imagen = lm.invertirColoresImagen(self.imagen_base)
+        if self.imagen is not None:
+            self.imagen = lm.invertirColoresImagen(self.imagen)
             # self.imagen = self.imagen.copy() # Actualizar base modificada
             self.guardarEnHistorial() 
             self.mostrarImagen()    
@@ -539,7 +539,7 @@ class VisorImagen(QWidget):
             self.imagen = lm.quitarCanal(self.imagen_base, canal)
             self.guardarEnHistorial() 
             self.mostrarImagen()
-            
+        
     def aplicarFiltroZonas(self, umbral, modo, color):
         """
         Aplica el filtro de zonas claras u oscuras a la imagen base.

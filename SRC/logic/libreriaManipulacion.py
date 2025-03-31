@@ -80,7 +80,7 @@ def ajusteContraste(imagen, contraste, tipo):
     
     img = np.copy(imagen)
     if tipo == 0:
-        img = np.clip(np.log1p(contraste * img) / np.log1p(contraste), 0, 1)
+        img = np.clip(np.log1p(contraste * img) / np.log1p(contraste + 1), 0, 1)
     else:
         img = np.clip(np.exp(contraste * (img - 1)), 0, 1)
     return img
@@ -88,17 +88,23 @@ def ajusteContraste(imagen, contraste, tipo):
 # capa de la imagen 
 def capaImagen(img, capa):
     """
-    Extrae una capa específica de una imagen y la devuelve como una nueva imagen con tres canales.
+    Aplica un efecto de atenuación a los canales de color de una imagen, 
+    manteniendo el canal especificado sin cambios significativos.
     Parámetros:
-    img (numpy.ndarray): La imagen de entrada en formato de matriz numpy con tres canales (RGB).
-    capa (int): El índice de la capa que se desea extraer (0 para rojo, 1 para verde, 2 para azul).
+    img (numpy.ndarray): Imagen de entrada representada como un arreglo NumPy.
+                         Se espera que tenga tres canales (RGB).
+    capa (int): Índice del canal que se desea mantener (0 para rojo, 1 para verde, 2 para azul).
     Retorna:
-    numpy.ndarray: Una nueva imagen con la misma dimensión que la imagen de entrada, 
-                   pero con todos los canales en cero excepto la capa especificada.
+    numpy.ndarray: Imagen modificada con los canales no seleccionados atenuados.
     """
-    fila,columna = img.shape[:2]
-    imgCapa = np.zeros((fila,columna,3))
-    imgCapa[:,:,capa] = img[:,:,capa]
+
+    imgCapa = np.copy(img)
+    imgCapa = quitarAtenuacionCanal(imgCapa)
+    
+    for i in range(3):
+        if i != capa:
+            imgCapa[:,:,i] = imgCapa[:,:,i] * 0.1
+
     return imgCapa
 
 # invertir imagen 
@@ -127,8 +133,39 @@ def quitarCanal(img, canal):
                    pero con el canal especificado eliminado.
     """
     imgCanal = np.copy(img)
-    imgCanal[:,:,canal] = 0
+    imgCanal = quitarAtenuacionCanal(imgCanal)
+    imgCanal[:,:,canal] = imgCanal[:,:,canal] * 0.1  # Eliminar el canal especificado
     return imgCanal
+
+# quitar atenuacion de la imagen
+def quitarAtenuacionCanal(imagen, factor_recuperacion=10):
+    """
+    Corrige la atenuación en los canales de color de una imagen.
+    Esta función ajusta los valores de los canales de color (R, G, B) de una imagen
+    si alguno de ellos está atenuado en comparación con los otros. La corrección
+    se realiza multiplicando los valores del canal atenuado por un factor de recuperación.
+    Args:
+        imagen (numpy.ndarray): Imagen de entrada representada como un arreglo NumPy
+            con forma (alto, ancho, 3), donde el último eje corresponde a los canales
+            de color (R, G, B).
+        factor_recuperacion (float, opcional): Factor por el cual se multiplicará el
+            canal atenuado para corregirlo. El valor predeterminado es 10.
+    Returns:
+        numpy.ndarray: Imagen corregida con los canales atenuados ajustados.
+    """
+    
+    imagen_corregida = imagen.copy()
+    
+    for canal in range(3):  # Iterar sobre R, G, B
+        media_canal = np.mean(imagen[:, :, canal])  # Media del canal actual
+        medias_otros = [np.mean(imagen[:, :, i]) for i in range(3) if i != canal]  # Media de los otros dos canales
+        media_promedio = np.mean(medias_otros)  # Media global de los otros canales
+
+        # Si el canal está atenuado, aplicamos corrección
+        if media_canal < media_promedio:
+            imagen_corregida[:, :, canal] = np.clip(imagen[:, :, canal] * factor_recuperacion, 0, 1)
+    
+    return imagen_corregida
 
 # marca de agua
 def fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=0, y_offset=0):
@@ -276,23 +313,28 @@ def guardar_imagen(ruta, img):
 # binarizar imagen
 def binarizar_imagen(img, umbral=0.5):
     """
-    Convierte una imagen en escala de grises a una imagen binaria (blanco y negro).
+    Convierte una imagen en escala de grises a una imagen binaria (blanco y negro) manteniendo el formato RGB.
 
     Parámetros:
-    img (numpy array): Imagen en escala de grises.
-    umbral (int): Valor de umbral para binarizar (0-1).
+    img (numpy array): Imagen de entrada con 3 canales (RGB) o en escala de grises.
+    umbral (float): Valor del umbral para binarizar (0-1).
 
     Retorna:
-    numpy array: Imagen binarizada (solo 0 y 1).
+    numpy array: Imagen binarizada con 3 canales (RGB).
     """
-    # Convertimos la imagen a escala de grises si no lo está
-    if len(img.shape) == 3:  # Si la imagen tiene 3 canales (RGB)
-        img = np.dot(img[..., :3], [0.2989, 0.5870, 0.1140])  # Conversión a escala de grises
+    # Convertimos la imagen a escala de grises si es RGB
+    if len(img.shape) == 3 and img.shape[2] == 3:
+        img_gris = np.dot(img[..., :3], [0.2989, 0.5870, 0.1140])  # Convertir a escala de grises
+    else:
+        img_gris = img  # Ya está en escala de grises
 
-    # Aplicamos binarización: Si el valor es mayor o igual al umbral → 1 (blanco), sino → 0 (negro)
-    img_binaria = np.where(img >= umbral, 1, 0)
+    # Aplicamos binarización: 1 (blanco) si el valor es mayor o igual al umbral, 0 (negro) si es menor
+    img_binaria = np.where(img_gris >= umbral, 1, 0)
 
-    return img_binaria
+    # Convertimos la imagen binaria en una imagen con 3 canales (RGB)
+    img_binaria_rgb = np.stack([img_binaria] * 3, axis=-1)
+
+    return img_binaria_rgb
 
 # histograma
 def histograma_imagen(img, bins=50, alpha=0.5):
