@@ -335,8 +335,7 @@ class VisorImagen(QWidget):
         """
         if self.imagen is not None:
             self.imagen_base = self.imagen.copy()  # Establece la imagen actual como base
-            # self.historial = [self.imagen.copy()]  # No borra historial de inmediato
-            self.historial.append(self.imagen.copy()) 
+            self.historial = [self.imagen.copy()]  # Reemplazar todo el historial con solo la imagen actual
             self.redo_stack.clear()  # Borra rehacer para evitar inconsistencias
             self.mostrarImagen()
             
@@ -356,7 +355,7 @@ class VisorImagen(QWidget):
         if self.imagen is not None:
             if not self.historial or not np.array_equal(self.imagen, self.historial[-1]):
                 self.historial.append(self.imagen.copy())  # Guarda el estado actual en historial
-                # self.redo_stack.clear()  # Limpia el historial de rehacer
+                self.redo_stack.clear()  # Limpia el historial de rehacer
 
     # --------------------------------------------------
     # manejo imagenes
