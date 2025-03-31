@@ -365,3 +365,54 @@ def filtrar_zonas_claras_oscuras(img, umbral=0.5, modo="claras", color=[1, 0, 0]
         img_filtrada[..., i] = np.where(mascara, color[i], img_filtrada[..., i])
 
     return img_filtrada
+
+# redimensionar imagen
+def redimensionar_imagen(imagen, factor):
+    """
+    Redimensiona una imagen según el factor especificado usando solo NumPy.
+    
+    Args:
+        imagen (numpy.ndarray): La imagen a redimensionar.
+        factor (float): Factor de escala. Valores mayores a 1 amplían la imagen, 
+                        valores menores a 1 la reducen.
+                        
+    Returns:
+        numpy.ndarray: La imagen redimensionada.
+    """
+    if imagen is None:
+        return None
+        
+    # Obtener dimensiones originales
+    h, w = imagen.shape[:2]
+    
+    # Calcular nuevas dimensiones
+    new_h, new_w = int(h * factor), int(w * factor)
+    
+    # Crear coordenadas para la nueva imagen
+    y_indices = np.linspace(0, h-1, new_h)
+    x_indices = np.linspace(0, w-1, new_w)
+    
+    # Para interpolación vecino más cercano (más rápida)
+    y_indices = np.round(y_indices).astype(int)
+    x_indices = np.round(x_indices).astype(int)
+    
+    # Limitar a los límites de la imagen
+    y_indices = np.clip(y_indices, 0, h-1)
+    x_indices = np.clip(x_indices, 0, w-1)
+    
+    # Crear una malla de coordenadas
+    coord_y, coord_x = np.meshgrid(y_indices, x_indices, indexing='ij')
+    
+    # Redimensionar cada canal
+    if len(imagen.shape) == 3:
+        # Imagen con canales (RGB/RGBA)
+        channels = imagen.shape[2]
+        resized = np.zeros((new_h, new_w, channels), dtype=imagen.dtype)
+        
+        for c in range(channels):
+            resized[:, :, c] = imagen[coord_y, coord_x, c]
+    else:
+        # Imagen en escala de grises
+        resized = imagen[coord_y, coord_x]
+    
+    return resized

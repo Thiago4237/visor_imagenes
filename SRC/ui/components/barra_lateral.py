@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import ( 
     QToolBar, QComboBox, QDial, QPushButton, QDockWidget, QWidget, QLabel, QVBoxLayout, QSlider, QFrame,
-    QHBoxLayout, QVBoxLayout
+    QHBoxLayout, QVBoxLayout, QLineEdit
 )
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from PyQt6.QtCore import QSize, Qt
@@ -557,7 +557,87 @@ class BarraLateral(QToolBar):
             # se agrega un separador visual
             # -------------------------------------------------
             layout.addWidget(self.configurarSeparador())
+                                    
+            # -------------------------------------------------
+            # Botón "Fusionar Imagenes"
+            # -------------------------------------------------                         
+            layout.addWidget(QLabel("Fusionar con otra imagen"))                        
             
+            # Barra para mostrar la ruta de la segunda imagen
+            layout_ruta2 = QHBoxLayout()
+            etiqueta_ruta2 = QLabel("Ruta:")
+            self.barraRutaImg2 = QLineEdit()
+            self.barraRutaImg2.setReadOnly(True)
+            layout_ruta2.addWidget(etiqueta_ruta2)
+            layout_ruta2.addWidget(self.barraRutaImg2)
+            layout.addLayout(layout_ruta2)
+            
+            # Botón para cargar la segunda imagen
+            btn_cargar_imagen2 = QPushButton("Seleccionar imagen")
+            btn_cargar_imagen2.clicked.connect(self.seleccionarImagenSecundaria)
+            layout.addWidget(btn_cargar_imagen2)
+            
+            # Slider para la transparencia (alpha)
+            layout.addWidget(QLabel("Transparencia"))
+            self.slider_alpha = QSlider(Qt.Orientation.Horizontal)
+            self.slider_alpha.setMinimum(0)
+            self.slider_alpha.setMaximum(100)
+            self.slider_alpha.setValue(50)  # 50% transparencia por defecto
+            self.slider_alpha.setTickInterval(10)
+            self.slider_alpha.setSingleStep(1)
+            # Conectar el cambio de valor para aplicar en tiempo real
+            self.slider_alpha.valueChanged.connect(self.aplicarFusionImagenes)
+            layout.addWidget(self.slider_alpha)
+            
+            # Slider para posición X
+            layout.addWidget(QLabel("Posición X"))
+            self.slider_x_offset = QSlider(Qt.Orientation.Horizontal)
+            self.slider_x_offset.setMinimum(0)
+            self.slider_x_offset.setMaximum(100)
+            self.slider_x_offset.setValue(0)
+            self.slider_x_offset.setTickInterval(10)
+            self.slider_x_offset.setSingleStep(1)
+            # Conectar el cambio de valor para aplicar en tiempo real
+            self.slider_x_offset.valueChanged.connect(self.aplicarFusionImagenes)
+            layout.addWidget(self.slider_x_offset)
+            
+            # Slider para posición Y
+            layout.addWidget(QLabel("Posición Y"))
+            self.slider_y_offset = QSlider(Qt.Orientation.Horizontal)
+            self.slider_y_offset.setMinimum(0)
+            self.slider_y_offset.setMaximum(100)
+            self.slider_y_offset.setValue(0)
+            self.slider_y_offset.setTickInterval(10)
+            self.slider_y_offset.setSingleStep(1)
+            # Conectar el cambio de valor para aplicar en tiempo real
+            self.slider_y_offset.valueChanged.connect(self.aplicarFusionImagenes)
+            layout.addWidget(self.slider_y_offset)
+            
+            # Separador para los nuevos botones
+            layout.addWidget(self.configurarSeparador())
+            
+            # Slider para ajustar el tamaño de la imagen secundaria
+            layout.addWidget(QLabel("Tamaño imagen secundaria"))
+            self.slider_tamano = QSlider(Qt.Orientation.Horizontal)
+            self.slider_tamano.setMinimum(10)  # 10% del tamaño original
+            self.slider_tamano.setMaximum(200) # 200% del tamaño original
+            self.slider_tamano.setValue(100)   # 100% = tamaño original
+            self.slider_tamano.setTickInterval(10)
+            self.slider_tamano.setSingleStep(5)
+            # Conectar el cambio de valor para aplicar en tiempo real
+            self.slider_tamano.valueChanged.connect(self.ajustarTamanoImagenSecundaria)
+            layout.addWidget(self.slider_tamano)
+            
+            # Botón para descartar los cambios de fusión
+            btn_descartar_fusion = QPushButton("Descartar cambios")
+            btn_descartar_fusion.clicked.connect(self.descartarCambiosFusion)
+            layout.addWidget(btn_descartar_fusion)
+            
+            # -------------------------------------------------
+            # se agrega un separador visual
+            # -------------------------------------------------
+            layout.addWidget(self.configurarSeparador())
+                        
             # -------------------------------------------------
             # Botón "Deshacer Modificaciones"
             # -------------------------------------------------     
@@ -565,7 +645,7 @@ class BarraLateral(QToolBar):
             btn_reiniciar = QPushButton("Borrar modificaciones")
             btn_reiniciar.clicked.connect(self.parent.visor.reiniciarImagen)
             layout.addWidget(btn_reiniciar)
-        
+    
     def cambiarValorSlider(self, valor):
         """
         Cambia el valor del slider a un valor normalizado.
@@ -613,5 +693,128 @@ class BarraLateral(QToolBar):
         
         # Llama al método del visor para aplicar el filtro
         self.parent.visor.aplicarFiltroZonas(umbral, modo, color)
+        
+        
+    # -------------------------------------------------
+    # Funciones para la opción de Fusionar Imagenes
+    # -------------------------------------------------     
+    def aplicarFusionImagenes(self):
+        """
+        Aplica la fusión de la imagen actual con la imagen secundaria.
+        
+        Este método obtiene los valores seleccionados de los sliders de transparencia,
+        posición X y posición Y, y los utiliza para aplicar la fusión de imágenes.
+        
+        Es llamado tanto por el botón "Aplicar fusión" como automáticamente cuando
+        se ajustan los sliders de transparencia o posición.
+        """
+        try:
+            # Intentamos acceder directamente a la imagen secundaria
+            imagen_secundaria = self.parent.visor.imagen_secundaria
+            
+            # Si imagen_secundaria es None, salimos de la función
+            if imagen_secundaria is None:
+                return
+                
+            # Obtener los valores de los sliders
+            alpha = self.slider_alpha.value() / 100.0  # Normalizar entre 0 y 1
+            
+            # Obtener dimensiones de la imagen principal para calcular desplazamientos relativos
+            h, w = self.parent.visor.imagen.shape[:2]
+            x_offset = int((self.slider_x_offset.value() / 100.0) * w)
+            y_offset = int((self.slider_y_offset.value() / 100.0) * h)
+            
+            # Llamar al método del visor para aplicar la fusión
+            self.parent.visor.aplicarFusionImagenes(imagen_secundaria, alpha, x_offset, y_offset)
+            
+        except Exception as e:
+            # Si hay algún error (imagen no cargada, etc.), simplemente continuamos sin aplicar la fusión
+            pass
+            
     
+    def seleccionarImagenSecundaria(self):
+        """
+        Abre un diálogo para seleccionar una imagen secundaria y la carga.
+        
+        Este método muestra un diálogo de selección de archivos y permite al usuario
+        elegir una imagen secundaria para fusionar con la imagen principal.
+        """
+        from PyQt6.QtWidgets import QFileDialog
+        
+        options = QFileDialog.Option.ReadOnly
+        filePath, _ = QFileDialog.getOpenFileName(
+            self.parent,
+            "Seleccionar Imagen Secundaria",
+            "",
+            "Imágenes (*.png *.jpg *.bmp *.jpeg);;Todos los archivos (*)",
+            options=options
+        )
+        
+        if filePath:
+            # Cargar la imagen secundaria en el visor
+            self.parent.visor.cargarImagenSecundaria(filePath)
+            # Actualizar la ruta en la interfaz
+            self.barraRutaImg2.setText(filePath)
+     
+    def ajustarTamanoImagenSecundaria(self):
+        """
+        Ajusta el tamaño de la imagen secundaria basado en el valor del slider.
+        
+        Este método toma el valor actual del slider de tamaño, lo convierte a un
+        factor de escala (porcentaje/100) y llama al método del visor para 
+        redimensionar la imagen secundaria y aplicar la fusión en tiempo real.
+        """
+        try:
+            # Verificar que existe una imagen secundaria
+            if self.parent.visor.imagen_secundaria is None:                
+                return
+                
+            # Convertir el valor del slider a un factor de escala
+            factor = self.slider_tamano.value() / 100.0
+            
+            # Redimensionar la imagen secundaria
+            self.parent.visor.redimensionarImagenSecundaria(factor)
+            
+            # Aplicar la fusión con la nueva imagen redimensionada
+            self.aplicarFusionImagenes()
+            
+        except Exception as e:
+            print(f"Error al ajustar tamaño: {e}")
+    
+    def descartarCambiosFusion(self):
+        """
+        Descarta completamente todos los cambios de fusión y reinicia el estado de la fusión.
+        
+        Este método realiza las siguientes acciones:
+        1. Restaura la imagen mostrada a su estado base (sin la fusión)
+        2. Elimina la imagen secundaria
+        3. Reinicia los controles de fusión a sus valores predeterminados
+        4. Limpia la ruta de la imagen secundaria en la interfaz
+        """
+        try:
+            # Verificar que existe una imagen base
+            if self.parent.visor.imagen_base is not None:
+                # Restaurar la imagen base sin aplicar fusión
+                self.parent.visor.restaurarImagenBase()
+                
+                # Eliminar la imagen secundaria y su referencia original
+                if hasattr(self.parent.visor, 'imagen_secundaria'):
+                    self.parent.visor.imagen_secundaria = None
+                    
+                if hasattr(self.parent.visor, 'imagen_secundaria_original'):
+                    self.parent.visor.imagen_secundaria_original = None
+                
+                # Limpiar la ruta de la imagen secundaria
+                self.parent.visor.ruta_imagen_secundaria = ""
+                self.barraRutaImg2.setText("")
+                
+                # Reiniciar los valores de los sliders a sus valores predeterminados
+                self.slider_alpha.setValue(50)
+                self.slider_x_offset.setValue(0)
+                self.slider_y_offset.setValue(0)
+                self.slider_tamano.setValue(100)
+                                
+        except Exception as e:
+            print(f"Error al descartar cambios: {e}")
+     
      

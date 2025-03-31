@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QLineEdit, QWidget, QPinchGesture
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QLineEdit, QWidget
 from PyQt6.QtGui import QPixmap, QImage, QWheelEvent
 from PyQt6.QtCore import Qt, QEvent
 from logic import libreriaManipulacion as lm
@@ -38,6 +38,8 @@ class VisorImagen(QWidget):
         self.historial = []  # Pila para deshacer cambios
         self.redo_stack = []  # Pila para rehacer cambios
         self.zoom_factor = 1.0
+        self.imagen_secundaria = None  # Para almacenar la imagen secundaria
+        self.ruta_imagen_secundaria = ""  # Para guardar la ruta de la imagen secundaria
         self.initUI()
         
         # Habilitar la aceptación de eventos táctiles y de gestos
@@ -225,6 +227,36 @@ class VisorImagen(QWidget):
             
             # Actualiza la barra de ruta con la ruta del archivo
             self.barraRuta.setText(filePath)
+            
+    def cargarImagenSecundaria(self, filePath):
+        """
+        Carga una imagen secundaria desde la ruta especificada para ser usada en la fusión.
+        
+        Args:
+            filePath (str): Ruta del archivo de la imagen secundaria a cargar.
+            
+        Acciones:
+            - Carga la imagen desde la ruta proporcionada y la almacena como imagen_secundaria.
+            - Guarda una copia como imagen_secundaria_original para manipulaciones posteriores.
+            - Guarda la ruta de la imagen secundaria para referencia.
+            - Aplica automáticamente una fusión inicial con la imagen principal para mostrar 
+              la imagen secundaria encima.
+        """
+        if filePath and self.imagen_base is not None:
+            # Cargar la imagen secundaria
+            self.imagen_secundaria = lm.cargar_imagen(filePath)
+            # Guardar una copia para uso en redimensionamiento
+            self.imagen_secundaria_original = self.imagen_secundaria.copy()
+            self.ruta_imagen_secundaria = filePath
+            
+            # Aplicar una fusión inicial para mostrar la imagen secundaria encima de la principal
+            # Alpha 0.7 para que se vea bien la imagen secundaria encima
+            self.imagen = lm.fusionar_imagenes(self.imagen_base, self.imagen_secundaria, 
+                                               alpha=0.7, x_offset=0, y_offset=0)
+            
+            # Guardamos en el historial y actualizamos la visualización
+            self.guardarEnHistorial()
+            self.mostrarImagen()
     
     def mostrarImagen(self):
         """
@@ -633,4 +665,74 @@ class VisorImagen(QWidget):
             self.imagen = lm.aplicar_zoom(self.imagen, self.zoom_factor, cursor_x, cursor_y)
             self.mostrarImagen()
 
+
+    # -------------------------------------------------
+    # Funciones para la opción de Fusionar Imagenes
+    # -------------------------------------------------   
+    def aplicarFusionImagenes(self, imagen_secundaria, alpha=0.5, x_offset=0, y_offset=0):
+        """
+        Fusiona la imagen base con una imagen secundaria superpuesta.
+        
+        Args:
+            imagen_secundaria (numpy.ndarray): La imagen que se superpondrá sobre la imagen base.
+            alpha (float, opcional): Nivel de transparencia de la imagen superpuesta. 
+                                    Valores entre 0 (completamente transparente) y 1 (completamente opaca). 
+                                    Por defecto es 0.5.
+            x_offset (int, opcional): Desplazamiento horizontal (en píxeles) desde la esquina superior 
+                                     izquierda donde se colocará la imagen superpuesta. Por defecto es 0.
+            y_offset (int, opcional): Desplazamiento vertical (en píxeles) desde la esquina superior 
+                                     izquierda donde se colocará la imagen superpuesta. Por defecto es 0.
+                                     
+        Acciones:
+            - Verifica si existe una imagen base.
+            - Utiliza la función lm.fusionar_imagenes para superponer la imagen secundaria sobre la imagen base.
+            - Guarda el resultado en el historial y actualiza la visualización.
+        """
+        if self.imagen_base is not None and imagen_secundaria is not None:
+            # Fusionar las imágenes usando la función de la librería de manipulación
+            self.imagen = lm.fusionar_imagenes(self.imagen_base, imagen_secundaria, alpha, x_offset, y_offset)
+            self.guardarEnHistorial()
+            self.mostrarImagen()
     
+    def redimensionarImagenSecundaria(self, factor):
+        """
+        Redimensiona la imagen secundaria según el factor especificado.
+        
+        Args:
+            factor (float): Factor de escala para redimensionar la imagen secundaria.
+                            Por ejemplo, 0.5 para reducir a la mitad, 2.0 para duplicar el tamaño.
+        
+        Acciones:
+            - Redimensiona la imagen secundaria usando la función redimensionar_imagen de la librería.
+            - Actualiza la variable imagen_secundaria con la versión redimensionada.
+        """
+        if self.imagen_secundaria is not None:
+            try:
+                # Guardamos la imagen secundaria original si no existe o es None
+                if not hasattr(self, 'imagen_secundaria_original') or self.imagen_secundaria_original is None:
+                    self.imagen_secundaria_original = self.imagen_secundaria.copy()
+                
+                # Usar la función de la librería de manipulación para redimensionar
+                # partiendo siempre de la imagen original para evitar degradación acumulativa
+                self.imagen_secundaria = lm.redimensionar_imagen(self.imagen_secundaria_original, factor)
+                
+                # Informar sobre el cambio (opcional)
+                h, w = self.imagen_secundaria.shape[:2]                
+                
+            except Exception as e:
+                print(f"Error al redimensionar: {e}")
+                return
+    
+    def restaurarImagenBase(self):
+        """
+        Restaura la imagen a su estado base, descartando temporalmente la fusión con la imagen secundaria.
+        
+        Esta función no elimina la imagen secundaria, solo restaura la imagen actualmente
+        mostrada a su estado base, permitiendo volver a aplicar la fusión posteriormente.
+        """
+        if self.imagen_base is not None:
+            # Restaurar la imagen actual a partir de la imagen base
+            self.imagen = self.imagen_base.copy()
+            
+            # Mostrar la imagen base sin la fusión
+            self.mostrarImagen()
