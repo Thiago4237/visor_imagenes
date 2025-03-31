@@ -611,10 +611,7 @@ class BarraLateral(QToolBar):
             self.slider_y_offset.setSingleStep(1)
             # Conectar el cambio de valor para aplicar en tiempo real
             self.slider_y_offset.valueChanged.connect(self.aplicarFusionImagenes)
-            layout.addWidget(self.slider_y_offset)
-            
-            # Separador para los nuevos botones
-            layout.addWidget(self.configurarSeparador())
+            layout.addWidget(self.slider_y_offset)                        
             
             # Slider para ajustar el tamaño de la imagen secundaria
             layout.addWidget(QLabel("Tamaño imagen secundaria"))

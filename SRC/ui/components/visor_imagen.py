@@ -136,27 +136,34 @@ class VisorImagen(QWidget):
               y las coordenadas de la posición del cursor sobre la imagen.
         """
         
+        # Verificar si tenemos una imagen cargada
+        if self.imagen is None:
+            return
+            
+        # Obtener el delta de la rueda del ratón
         delta = event.angleDelta().y()
         if delta == 0:
             delta = event.pixelDelta().y()
-        factor = 1.1 if delta > 0 else 0.9
-
-        # La posición del evento está en coordenadas del widget (self)
-        # Convertirla a coordenadas relativas al QLabel
+        
+        # Calcular el factor de zoom - hacerlo más agresivo (25% en lugar de 10%)
+        factor = 1.25 if delta > 0 else 0.8
+        
+        # Convertir coordenadas del cursor para centrar el zoom correctamente
         cursor_global = event.globalPosition().toPoint()
         cursor_local = self.labelImagen.mapFromGlobal(cursor_global)
 
-        # Calcular la posición del cursor sobre la imagen mostrada:
+        # Calcular la posición del cursor sobre la imagen mostrada
         label_size = self.labelImagen.size()
-        if self.imagen is None:
-            return
         img_h, img_w = self.imagen.shape[:2]
         scale = min(label_size.width() / img_w, label_size.height() / img_h)
         offset_x = (label_size.width() - img_w * scale) / 2
         offset_y = (label_size.height() - img_h * scale) / 2
+        
+        # Convertir coordenadas del cursor relativas a la imagen
         image_x = (cursor_local.x() - offset_x) / scale
         image_y = (cursor_local.y() - offset_y) / scale
 
+        # Aplicar el zoom con el factor calculado
         self.aplicarZoom(factor, int(image_x), int(image_y))
 
     def gestureEvent(self, event):
@@ -177,20 +184,28 @@ class VisorImagen(QWidget):
         """
         
         pinch = event.gesture(Qt.GestureType.PinchGesture)
-        if pinch:
+        if pinch and self.imagen is not None:
+            # Amplificar el factor de escala para hacerlo más sensible
             scaleFactor = pinch.scaleFactor()
+            # Si el factor es muy cercano a 1, podemos amplificarlo para hacerlo más efectivo
+            if 0.9 < scaleFactor < 1.1:
+                # Amplificamos el factor para hacerlo más sensible
+                if scaleFactor > 1:
+                    scaleFactor = 1 + (scaleFactor - 1) * 2.5  # Amplificar el zoom in
+                else:
+                    scaleFactor = 1 - (1 - scaleFactor) * 2.5  # Amplificar el zoom out
+            
             # Mapear el centro del gesto al QLabel
             center_global = pinch.centerPoint().toPoint()
             center_local = self.labelImagen.mapFromGlobal(center_global)
             label_size = self.labelImagen.size()
-            if self.imagen is None:
-                return True
             img_h, img_w = self.imagen.shape[:2]
             scale = min(label_size.width() / img_w, label_size.height() / img_h)
             offset_x = (label_size.width() - img_w * scale) / 2
             offset_y = (label_size.height() - img_h * scale) / 2
             image_x = (center_local.x() - offset_x) / scale
-            image_y = (center_local.y() - offset_y) / scale
+            image_y = (center_local.y() - offset_y) / scale            
+            
             self.aplicarZoom(scaleFactor, int(image_x), int(image_y))
         return True
 
@@ -616,16 +631,25 @@ class VisorImagen(QWidget):
             - Finalmente, se muestra la imagen actualizada.
         """
         
-        if self.imagen is not None:
+        if self.imagen is not None and self.imagen_base is not None:
             h, w = self.imagen.shape[:2]
             
+            # Si no se proporciona posición, usar el centro de la imagen
             if cursor_x is None or cursor_y is None:
                 cursor_x, cursor_y = w // 2, h // 2  # Zoom centrado si no se proporciona posición
             
-            self.zoom_factor *= factor
-            self.zoom_factor = max(0.1, min(self.zoom_factor, 5.0))  # Limitar el zoom
+            # Actualizar el factor de zoom global
+            nuevo_zoom_factor = self.zoom_factor * factor
             
-            self.imagen = lm.aplicar_zoom(self.imagen, self.zoom_factor, cursor_x, cursor_y)
+            # Limitar el zoom entre 0.1 (10%) y 5.0 (500%)
+            nuevo_zoom_factor = max(0.1, min(nuevo_zoom_factor, 5.0))
+            
+            # Eliminar la condición de igualdad exacta para evitar problemas de precisión
+            # y siempre aplicar el zoom cuando se llama a esta función
+            self.zoom_factor = nuevo_zoom_factor            
+            
+            # Aplicar el zoom usando la librería de manipulación
+            self.imagen = lm.aplicar_zoom(self.imagen_base, self.zoom_factor, cursor_x, cursor_y)
             self.guardarEnHistorial() 
             self.mostrarImagen()
 
@@ -648,6 +672,9 @@ class VisorImagen(QWidget):
             - Actualiza la visualización de la imagen con el nuevo nivel de zoom.
         """
         
+        if self.imagen is None:
+            return
+            
         # Extraer el valor numérico y convertir a factor (por ejemplo, "120%" -> 1.2)
         try:
             zoom_value = int(zoom_text.replace("%", ""))
@@ -656,14 +683,18 @@ class VisorImagen(QWidget):
         
         factor = zoom_value / 100.0  # 1.0 es tamaño normal
 
-        if self.imagen is not None:
-            h, w = self.imagen.shape[:2]
-            # Si no se provee la posición, se toma el centro de la imagen
-            if cursor_x is None or cursor_y is None:
-                cursor_x, cursor_y = w // 2, h // 2
-            self.zoom_factor = factor
-            self.imagen = lm.aplicar_zoom(self.imagen, self.zoom_factor, cursor_x, cursor_y)
-            self.mostrarImagen()
+        h, w = self.imagen.shape[:2]
+        # Si no se provee la posición, se toma el centro de la imagen
+        if cursor_x is None or cursor_y is None:
+            cursor_x, cursor_y = w // 2, h // 2
+            
+        # Reemplazar factor actual en vez de multiplicarlo
+        self.zoom_factor = factor        
+        
+        # Aplicar zoom desde la imagen base, no la actual
+        self.imagen = lm.aplicar_zoom(self.imagen_base, self.zoom_factor, cursor_x, cursor_y)
+        self.guardarEnHistorial()
+        self.mostrarImagen()
 
 
     # -------------------------------------------------
