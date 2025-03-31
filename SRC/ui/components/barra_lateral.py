@@ -269,7 +269,7 @@ class BarraLateral(QToolBar):
             self.sliderContrasteNegativo = QSlider(Qt.Orientation.Horizontal)
             self.sliderContrasteNegativo.setMinimum(1)   # Equivalente a 0.01
             self.sliderContrasteNegativo.setMaximum(100)  # Equivalente a 1.0
-            self.sliderContrasteNegativo.setValue(1)    # Neutro = 0.01
+            self.sliderContrasteNegativo.setValue(100)    # Neutro = 0.01
             self.sliderContrasteNegativo.setSingleStep(1)
             self.sliderContrasteNegativo.valueChanged.connect(lambda val: self.parent.visor.ajustarContrasteNegativo(self.cambiarValorSlider(val)))
 
