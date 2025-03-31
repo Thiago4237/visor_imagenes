@@ -39,6 +39,23 @@ class BarraSuperior(QToolBar):
     def initActionsTop(self):
         """Inicializa y agrega los botones a la barra de herramientas."""
 
+         # Botón de Cargar
+        cargar_action = self.createAction("cargar", "Cargar", self.cargarImagen)
+        cargar_action.setShortcut(cfg.ATAJOS["cargar"])
+        self.addAction(cargar_action)
+
+        # Botón de Guardar
+        guardar_action = self.createAction("guardar", "Guardar", self.guardarImagen)
+        guardar_action.setShortcut(cfg.ATAJOS["guardar"])
+        self.addAction(guardar_action)
+
+        self.addSeparator()  # Separador entre botones
+
+        # Botón de Actualizar
+        actualizar_action = self.createAction("actualizar", "Actualizar", self.actualizarImagen)
+        actualizar_action.setShortcut(cfg.ATAJOS["actualizar"])
+        self.addAction(actualizar_action)
+
         # Botón de Deshacer
         deshacer_action = self.createAction("deshacer", "Deshacer", self.deshacerCambios)
         self.addAction(deshacer_action)
@@ -47,23 +64,7 @@ class BarraSuperior(QToolBar):
         rehacer_action = self.createAction("rehacer", "Rehacer", self.rehacerCambios)
         self.addAction(rehacer_action)
 
-        self.addSeparator()  # Separador entre botones
-
-        # Botón de Cargar
-        cargar_action = self.createAction("cargar", "Cargar", self.cargarImagen)
-        cargar_action.setShortcut(cfg.ATAJOS["cargar"])
-        self.addAction(cargar_action)
-
-        # Botón de Actualizar
-        actualizar_action = self.createAction("actualizar", "Actualizar", self.actualizarImagen)
-        actualizar_action.setShortcut(cfg.ATAJOS["actualizar"])
-        self.addAction(actualizar_action)
-
-        # Botón de Guardar
-        guardar_action = self.createAction("guardar", "Guardar", self.guardarImagen)
-        guardar_action.setShortcut(cfg.ATAJOS["guardar"])
-        self.addAction(guardar_action)
-
+        
     def createAction(self, icono_nombre, texto, callback):
         """
         Crea un botón de acción con su respectivo icono, texto y función asociada.
@@ -81,8 +82,6 @@ class BarraSuperior(QToolBar):
             self.parent_widget.visor.cargarImagen(filePath)
         self.desmarcarBoton()
 
-    def guardarImagen(self):
-        """Abre un cuadro de diálogo para guardar la imagen actual."""
     def guardarImagen(self):
         """Abre un cuadro de diálogo para guardar la imagen actual."""
         filePath, _ = QFileDialog.getSaveFileName(self.parent_widget, "Guardar imagen", "", "Imágenes (*.png *.jpg *.bmp)")

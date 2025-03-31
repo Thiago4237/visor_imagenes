@@ -296,6 +296,23 @@ def binarizar_imagen(img, umbral=0.5):
 
 # histograma
 def histograma_imagen(img, bins=50, alpha=0.5):
+    """
+    Genera y muestra un histograma para cada canal de color (rojo, verde y azul) de una imagen.
+    Parámetros:
+    -----------
+    img : numpy.ndarray
+        Imagen de entrada en formato numpy array. Se espera que tenga tres canales (RGB).
+        Si los valores de la imagen están en el rango [0, 1], se escalarán automáticamente a [0, 255].
+    bins : int, opcional
+        Número de divisiones (bins) para el histograma. Por defecto es 50.
+    alpha : float, opcional
+        Transparencia de las barras del histograma. Por defecto es 0.5.
+    Notas:
+    ------
+    - La función genera un histograma separado para cada canal de color (rojo, verde y azul).
+    - Los histogramas se muestran en una figura con tres subgráficos, uno para cada canal.
+    """
+    
     # Asegurar que la imagen está en rango 0-255 si es necesario
     if img.max() <= 1.0:
         img = (img * 255).astype(np.uint8)
