@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from PyQt6.QtCore import QSize, Qt
 import config.config as cfg
+from ui import styles as st
 
 class BarraLateral(QToolBar):
     
@@ -74,6 +75,7 @@ class BarraLateral(QToolBar):
         ajustes_basicos_action = QAction(QIcon(ajustes_basicos_icon_path), "Ajustes Básicos", self)
         ajustes_basicos_action.setCheckable(True)  
         ajustes_basicos_action.triggered.connect(lambda: self.mostrarOpciones("Básicos"))
+        ajustes_basicos_action.setShortcut(cfg.ATAJOS["ajustesBasicos"])
         self.addAction(ajustes_basicos_action)
         action_group.addAction(ajustes_basicos_action) 
 
@@ -82,6 +84,7 @@ class BarraLateral(QToolBar):
         ajustes_filtros_action = QAction(QIcon(ajustes_filtros_icon_path), "Ajustes de Filtros", self)
         ajustes_filtros_action.setCheckable(True)  
         ajustes_filtros_action.triggered.connect(lambda: self.mostrarOpciones("de Filtros"))
+        ajustes_filtros_action.setShortcut(cfg.ATAJOS["ajustesDeFiltros"])
         self.addAction(ajustes_filtros_action)
         action_group.addAction(ajustes_filtros_action)  
 
@@ -90,6 +93,7 @@ class BarraLateral(QToolBar):
         ajustes_avanzados_action = QAction(QIcon(ajustes_avanzados_icon_path), "Ajustes Avanzados", self)
         ajustes_avanzados_action.setCheckable(True)  
         ajustes_avanzados_action.triggered.connect(lambda: self.mostrarOpciones("Avanzados"))
+        ajustes_avanzados_action.setShortcut(cfg.ATAJOS["ajustesAvanzados"])
         self.addAction(ajustes_avanzados_action)
         action_group.addAction(ajustes_avanzados_action) 
 
@@ -195,7 +199,7 @@ class BarraLateral(QToolBar):
                 * Rango: 1 a 200 (100 es el valor neutral).
             - Slider de contraste negativo:
                 * Permite ajustar el contraste negativo de la imagen.
-                * Rango: 1 a 100 (1 es el valor neutral).
+                * Rango: 1 a 100 (100 es el valor neutral).
             - Slider de contraste positivo:
                 * Permite ajustar el contraste positivo de la imagen.
                 * Rango: 1 a 100 (100 es el valor neutral).
@@ -223,8 +227,7 @@ class BarraLateral(QToolBar):
             brillo_layout = QVBoxLayout()
 
             # Etiqueta de título
-            lbl_titulo = QLabel("Brillo")
-            brillo_layout.addWidget(lbl_titulo)
+            layout.addWidget(QLabel("Brillo"))
 
             # Layout horizontal para el slider y valores
             slider_layout = QHBoxLayout()
@@ -560,14 +563,19 @@ class BarraLateral(QToolBar):
                                     
             # -------------------------------------------------
             # Botón "Fusionar Imagenes"
-            # -------------------------------------------------                         
-            layout.addWidget(QLabel("Fusionar con otra imagen"))                        
+            # -------------------------------------------------   
+            layout.addWidget(QLabel("Fusionar con otra imagen"))
             
             # Barra para mostrar la ruta de la segunda imagen
             layout_ruta2 = QHBoxLayout()
             etiqueta_ruta2 = QLabel("Ruta:")
             self.barraRutaImg2 = QLineEdit()
             self.barraRutaImg2.setReadOnly(True)
+            
+            # Aplicar estilos a la etiqueta y a la barra de ruta
+            etiqueta_ruta2.setStyleSheet(st.LABEL_STYLE)
+            self.barraRutaImg2.setStyleSheet(st.TEXTFIELD_STYLE)
+            
             layout_ruta2.addWidget(etiqueta_ruta2)
             layout_ruta2.addWidget(self.barraRutaImg2)
             layout.addLayout(layout_ruta2)
@@ -579,6 +587,7 @@ class BarraLateral(QToolBar):
             
             # Slider para la transparencia (alpha)
             layout.addWidget(QLabel("Transparencia"))
+            
             self.slider_alpha = QSlider(Qt.Orientation.Horizontal)
             self.slider_alpha.setMinimum(0)
             self.slider_alpha.setMaximum(100)
@@ -591,6 +600,7 @@ class BarraLateral(QToolBar):
             
             # Slider para posición X
             layout.addWidget(QLabel("Posición X"))
+            
             self.slider_x_offset = QSlider(Qt.Orientation.Horizontal)
             self.slider_x_offset.setMinimum(0)
             self.slider_x_offset.setMaximum(100)
@@ -603,6 +613,7 @@ class BarraLateral(QToolBar):
             
             # Slider para posición Y
             layout.addWidget(QLabel("Posición Y"))
+            
             self.slider_y_offset = QSlider(Qt.Orientation.Horizontal)
             self.slider_y_offset.setMinimum(0)
             self.slider_y_offset.setMaximum(100)
@@ -615,6 +626,7 @@ class BarraLateral(QToolBar):
             
             # Slider para ajustar el tamaño de la imagen secundaria
             layout.addWidget(QLabel("Tamaño imagen secundaria"))
+            
             self.slider_tamano = QSlider(Qt.Orientation.Horizontal)
             self.slider_tamano.setMinimum(10)  # 10% del tamaño original
             self.slider_tamano.setMaximum(200) # 200% del tamaño original
@@ -638,7 +650,8 @@ class BarraLateral(QToolBar):
             # -------------------------------------------------
             # Botón "Deshacer Modificaciones"
             # -------------------------------------------------     
-            layout.addWidget(QLabel("Reiniciar imagen"))       
+            layout.addWidget(QLabel("Reiniciar imagen"))
+            
             btn_reiniciar = QPushButton("Borrar modificaciones")
             btn_reiniciar.clicked.connect(self.parent.visor.reiniciarImagen)
             layout.addWidget(btn_reiniciar)

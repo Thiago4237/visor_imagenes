@@ -38,4 +38,9 @@ ATAJOS = {
     "cargar": "Ctrl+C",
     "actualizar": "Ctrl+A",
     "guardar": "Ctrl+G",
+    "deshacer": "Ctrl+Z",
+    "rehacer": "Ctrl+Y",
+    "ajustesBasicos": "1",
+    "ajustesDeFiltros": "2",
+    "ajustesAvanzados": "3",
 }

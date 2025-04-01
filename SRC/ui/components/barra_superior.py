@@ -84,10 +84,12 @@ class BarraSuperior(QToolBar):
 
         # Botón de Deshacer
         deshacer_action = self.createAction("deshacer", "Deshacer", self.deshacerCambios)
+        deshacer_action.setShortcut(cfg.ATAJOS["deshacer"])
         self.addAction(deshacer_action)
 
         # Botón de Rehacer
         rehacer_action = self.createAction("rehacer", "Rehacer", self.rehacerCambios)
+        rehacer_action.setShortcut(cfg.ATAJOS["rehacer"])
         self.addAction(rehacer_action)
 
         

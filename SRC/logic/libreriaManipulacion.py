@@ -213,7 +213,8 @@ def fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=0, y_offset=0):
 # rotar imagen
 def rotar_imagen(img, angulo):
     """
-    Rota una imagen en un ángulo especificado usando solo numpy y matplotlib.
+    Rota una imagen en un ángulo especificado manteniendo toda la imagen visible,
+    usando solo numpy y matplotlib.
     
     Parámetros:
     img (ndarray): Imagen a rotar (matriz numpy).
@@ -222,50 +223,81 @@ def rotar_imagen(img, angulo):
     Retorna:
     ndarray: Imagen rotada con valores de píxeles entre 0 y 1.
     """
-    angulo_rad = np.radians(angulo)
+    # Si el ángulo es 0 o múltiplo de 360, devolver la imagen original sin cambios
+    if angulo % 360 == 0:
+        return np.copy(img)
+        
     h, w = img.shape[:2]
-    y, x = np.indices((h, w))
+    angulo_rad = np.radians(angulo)
     
-    # Centro de la imagen
-    x_centro, y_centro = w / 2, h / 2
+    # Calcular las nuevas dimensiones para contener toda la imagen rotada
+    # |cos(ángulo)| * ancho + |sin(ángulo)| * alto
+    w_rot = int(abs(np.cos(angulo_rad) * w) + abs(np.sin(angulo_rad) * h))
+    h_rot = int(abs(np.sin(angulo_rad) * w) + abs(np.cos(angulo_rad) * h))
     
-    x = x.astype(np.float64)  # Convertir a float64 antes de la resta
-    y = y.astype(np.float64)
+    # Centro de la imagen original y rotada
+    x_centro_orig, y_centro_orig = w / 2, h / 2
+    x_centro_rot, y_centro_rot = w_rot / 2, h_rot / 2
     
-    x -= x_centro
-    y -= y_centro
-
-    # Rotación de coordenadas
-    cos_a, sin_a = np.cos(angulo_rad), np.sin(angulo_rad)
-    x_rot = cos_a * x - sin_a * y + x_centro
-    y_rot = sin_a * x + cos_a * y + y_centro
-
-    # Redondeo a índices válidos dentro de la imagen
-    x_rot = np.clip(x_rot, 0, w - 1)
-    y_rot = np.clip(y_rot, 0, h - 1)
-
-    # Interpolación bilineal manual
-    x0 = np.floor(x_rot).astype(int)
-    x1 = np.clip(x0 + 1, 0, w - 1)
-    y0 = np.floor(y_rot).astype(int)
-    y1 = np.clip(y0 + 1, 0, h - 1)
-
-    # Pesos de interpolación
-    wa = (x1 - x_rot) * (y1 - y_rot)
-    wb = (x_rot - x0) * (y1 - y_rot)
-    wc = (x1 - x_rot) * (y_rot - y0)
-    wd = (x_rot - x0) * (y_rot - y0)
-
-    # Aplicar interpolación a cada canal
-    img_rotada = np.zeros_like(img)
+    # Color de fondo del visor (#606470) convertido a RGB normalizado [0-1]
+    # Convertir de hex a RGB [0-1]
+    r = int('60', 16) / 255.0
+    g = int('64', 16) / 255.0
+    b = int('70', 16) / 255.0
+    color_fondo = [r, g, b]  # Color de fondo del visor
+    
+    # Crear nueva imagen más grande para contener toda la rotación con el color de fondo del visor
+    img_rotada = np.ones((h_rot, w_rot, img.shape[2]))
     for c in range(img.shape[2]):
-        img_rotada[:, :, c] = (
-            wa * img[y0, x0, c] +
-            wb * img[y0, x1, c] +
-            wc * img[y1, x0, c] +
-            wd * img[y1, x1, c]
+        img_rotada[:, :, c] *= color_fondo[c]
+    
+    # Crear coordenadas para la nueva imagen
+    y_rot, x_rot = np.indices((h_rot, w_rot)).astype(np.float64)
+    
+    # Ajustar coordenadas respecto al centro de la imagen rotada
+    x_rot -= x_centro_rot
+    y_rot -= y_centro_rot
+    
+    # Rotar las coordenadas en dirección opuesta
+    cos_a, sin_a = np.cos(-angulo_rad), np.sin(-angulo_rad)
+    x_orig = cos_a * x_rot - sin_a * y_rot + x_centro_orig
+    y_orig = sin_a * x_rot + cos_a * y_rot + y_centro_orig
+    
+    # Filtrar coordenadas válidas dentro de la imagen original
+    valid_coords = (x_orig >= 0) & (x_orig < w-1) & (y_orig >= 0) & (y_orig < h-1)
+    
+    # Interpolación bilineal
+    x0 = np.floor(x_orig).astype(int)
+    x1 = x0 + 1
+    y0 = np.floor(y_orig).astype(int)
+    y1 = y0 + 1
+    
+    # Limitar a índices válidos
+    x0 = np.clip(x0, 0, w-1)
+    x1 = np.clip(x1, 0, w-1)
+    y0 = np.clip(y0, 0, h-1)
+    y1 = np.clip(y1, 0, h-1)
+    
+    # Pesos para interpolación
+    wx = x_orig - x0
+    wy = y_orig - y0
+    
+    # Para cada canal, realizar la interpolación bilineal
+    for c in range(img.shape[2]):
+        # Interpolación bilineal
+        top_left = img[y0, x0, c] * (1-wx) * (1-wy)
+        top_right = img[y0, x1, c] * wx * (1-wy)
+        bottom_left = img[y1, x0, c] * (1-wx) * wy
+        bottom_right = img[y1, x1, c] * wx * wy
+        
+        # Sumar los cuatro valores ponderados solo para las coordenadas válidas
+        img_rotada[valid_coords, c] = (
+            top_left[valid_coords] + 
+            top_right[valid_coords] + 
+            bottom_left[valid_coords] + 
+            bottom_right[valid_coords]
         )
-
+    
     return np.clip(img_rotada, 0, 1)
 
 # aplicar zoom
@@ -362,19 +394,41 @@ def histograma_imagen(img, bins=50, alpha=0.5):
     colores = ['r', 'g', 'b']
     nombres = ['Canal Rojo', 'Canal Verde', 'Canal Azul']
 
-    fig, axes = plt.subplots(3, 1, figsize=(6, 8))  # 3 filas, 1 columna
+    # Crear una figura más pequeña y compacta
+    fig, axes = plt.subplots(3, 1, figsize=(9, 6))  # Tamaño reducido
+    fig.suptitle("Histograma de la imagen", fontsize=10)
 
     # Generar un histograma separado por cada canal
     for i, ax in enumerate(axes):
         canal = img[..., i].flatten()
         ax.hist(canal, bins=bins, color=colores[i], alpha=alpha)
-        ax.set_title(nombres[i])
-        ax.set_xlabel("Intensidad de píxeles")
-        ax.set_ylabel("Frecuencia")
+        ax.set_title(nombres[i], fontsize=9)
+        ax.set_xlabel("Intensidad de píxeles", fontsize=8)
+        ax.set_ylabel("Frecuencia", fontsize=8)
         ax.set_xlim([0, 255])  # Asegurar que los ejes sean consistentes
+        ax.tick_params(axis='both', which='major', labelsize=7)  # Tamaño de las etiquetas de los ejes
 
     plt.tight_layout()
-    plt.show()
+    
+    # Centrar la ventana en la pantalla
+    mng = plt.get_current_fig_manager()
+    if hasattr(mng, 'window'):
+        # Para backends que soportan esta funcionalidad (TkAgg, WXAgg, Qt5Agg)
+        try:
+            # QT backend
+            if hasattr(mng, 'window'):
+                geom = mng.window.geometry()
+                x, y, dx, dy = geom.getRect()
+                mng.window.setGeometry(280, 90, dx, dy)
+        except:
+            try:
+                # TkAgg backend
+                mng.window.wm_geometry("+300+300")
+            except:
+                pass  # Ignorar si no se puede centrar
+    
+    # Usar block=False para evitar bloquear el bucle de eventos existente
+    plt.show(block=False)
 
 # filtro de zonas claras 
 def filtrar_zonas_claras_oscuras(img, umbral=0.5, modo="claras", color=[1, 0, 0]):

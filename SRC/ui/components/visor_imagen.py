@@ -75,7 +75,9 @@ class VisorImagen(QWidget):
         self.barraRuta = QLineEdit()
         self.barraRuta.setReadOnly(True)
         
+        # Estilos
         etiqueta_ruta.setStyleSheet(st.LABEL_STYLE)
+        self.labelImagen.setStyleSheet(st.LABEL_IMAGE)
         self.barraRuta.setStyleSheet(st.TEXTFIELD_STYLE)
         
         layout_ruta.addWidget(etiqueta_ruta)
@@ -465,8 +467,10 @@ class VisorImagen(QWidget):
         Ajusta el contraste de la imagen base incrementándolo en función del valor proporcionado.
         Args:
             valor (float): Valor que determina el nivel de ajuste positivo del contraste.
+                           Valor entre 0.0 y 1.0, donde 1.0 representa sin cambios.
         Acciones:
-            - Aplica un ajuste positivo de contraste a la imagen base utilizando la función `ajusteContraste`.
+            - Si el valor es 1.0 (o muy cercano), muestra la imagen base sin cambios.
+            - De lo contrario, aplica un ajuste positivo de contraste a la imagen base.
             - Guarda el estado actual de la imagen en el historial.
             - Muestra la imagen ajustada en la interfaz.
         Nota:
@@ -474,25 +478,39 @@ class VisorImagen(QWidget):
         """
         
         if self.imagen_base is not None:
-            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 1)
+            # Si el valor es 1.0 (slider al máximo), mostrar la imagen original
+            if valor >= 0.99:  # Usar 0.99 para manejar posibles imprecisiones numéricas
+                self.imagen = self.imagen_base.copy()
+            else:
+                # Aplicar el ajuste de contraste normalmente
+                self.imagen = lm.ajusteContraste(self.imagen_base, valor, 1)
+                
             self.guardarEnHistorial() 
             self.mostrarImagen()
 
     def ajustarContrasteNegativo(self, valor):
         """
         Ajusta el contraste de la imagen actual aplicando un valor negativo.
-        Este método modifica la imagen base ajustando su contraste con un valor
-        negativo especificado. Luego, guarda el estado actual de la imagen en el 
-        historial y la muestra en la interfaz.
         Args:
-            valor (int o float): Valor negativo para ajustar el contraste de la imagen.
-                                 Un valor más bajo reduce el contraste.
+            valor (float): Valor para ajustar el contraste de la imagen.
+                           Valor entre 0.0 y 1.0, donde 1.0 representa sin cambios.
+        Acciones:
+            - Si el valor es 1.0 (o muy cercano), muestra la imagen base sin cambios.
+            - De lo contrario, aplica un ajuste negativo de contraste a la imagen base.
+            - Guarda el estado actual de la imagen en el historial.
+            - Muestra la imagen ajustada en la interfaz.
         Nota:
             Este método no realiza ninguna acción si no hay una imagen base cargada.
         """
         
         if self.imagen_base is not None:
-            self.imagen = lm.ajusteContraste(self.imagen_base, valor, 0)
+            # Si el valor es 1.0 (slider al máximo), mostrar la imagen original
+            if valor >= 0.99:  # Usar 0.99 para manejar posibles imprecisiones numéricas
+                self.imagen = self.imagen_base.copy()
+            else:
+                # Aplicar el ajuste de contraste normalmente
+                self.imagen = lm.ajusteContraste(self.imagen_base, valor, 0)
+                
             self.guardarEnHistorial() 
             self.mostrarImagen()
 

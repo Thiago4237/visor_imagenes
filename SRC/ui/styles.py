@@ -29,6 +29,8 @@ TOOLBAR_STYLE = """
     }
 """
 
+# Estilo para el texto que se muestra cuando no hay imagen cargada
+LABEL_IMAGE = "color: white; font-size: 14px; font-weight: bold;"
 
 # Estilo para el contenedor principal
 MAIN_CONTAINER_STYLE = "background-color: #606470;"
