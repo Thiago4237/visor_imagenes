@@ -572,8 +572,7 @@ class BarraLateral(QToolBar):
             self.barraRutaImg2 = QLineEdit()
             self.barraRutaImg2.setReadOnly(True)
             
-            # Aplicar estilos a la etiqueta y a la barra de ruta
-            etiqueta_ruta2.setStyleSheet(st.LABEL_STYLE)
+            # Aplicar estilos a la barra de ruta            
             self.barraRutaImg2.setStyleSheet(st.TEXTFIELD_STYLE)
             
             layout_ruta2.addWidget(etiqueta_ruta2)
