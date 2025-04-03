@@ -341,6 +341,46 @@ def aplicar_zoom(img, factor, x_centro, y_centro):
     
     return img_zoom
 
+def aplicar_zoom_1(img, factor, x_centro, y_centro):
+    """
+    Aplica zoom en una imagen centrado en un punto específico usando solo NumPy.
+    
+    Parámetros:
+    - img (numpy.ndarray): Imagen en formato de matriz NumPy.
+    - factor (float): Factor de zoom (>1 para acercar, <1 para alejar).
+    - x_centro (int): Coordenada X del centro de zoom.
+    - y_centro (int): Coordenada Y del centro de zoom.
+    
+    Retorna:
+    - numpy.ndarray: Imagen escalada con zoom.
+    """
+    h, w = img.shape[:2]
+
+    # Calcular el nuevo tamaño de la región de recorte
+    nuevo_ancho = int(w / factor)
+    nuevo_alto = int(h / factor)
+
+    # Asegurar que el recorte esté dentro de los límites de la imagen
+    x_inicio = max(0, int(x_centro - nuevo_ancho / 2))
+    y_inicio = max(0, int(y_centro - nuevo_alto / 2))
+    x_fin = min(w, x_inicio + nuevo_ancho)
+    y_fin = min(h, y_inicio + nuevo_alto)
+
+    # Recortar la imagen
+    img_zoom = img[y_inicio:y_fin, x_inicio:x_fin]
+
+    # Escalar la imagen de vuelta al tamaño original usando duplicación de píxeles
+    scale_x = w / img_zoom.shape[1]
+    scale_y = h / img_zoom.shape[0]
+
+    img_zoom = np.kron(img_zoom, np.ones((int(scale_y), int(scale_x), 1)))  # Repetición de píxeles
+
+    # Recortar para que coincida exactamente con (h, w)
+    img_zoom = img_zoom[:h, :w]
+
+    return img_zoom
+
+
 # guardar imagen 
 def guardar_imagen(ruta, img):
     """
