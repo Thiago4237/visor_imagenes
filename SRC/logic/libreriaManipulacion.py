@@ -167,7 +167,7 @@ def quitarAtenuacionCanal(imagen, factor_recuperacion=10):
     
     return imagen_corregida
 
-# marca de agua
+# fusionar imagenes
 def fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=0, y_offset=0):
     """
     Fusiona dos imágenes superponiendo una sobre la otra con un nivel de transparencia especificado.
@@ -205,8 +205,21 @@ def fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=0, y_offset=0):
     roi = resultado[y_offset:y_fin, x_offset:x_fin]
     img2_recorte = imagen2[: (y_fin - y_offset), : (x_fin - x_offset)]
     
+    # Procesar según la cantidad de canales
+    if img2_recorte.shape[2] == 4:
+        # Separa los canales RGB y el canal alfa
+        imagen_2_rgb = img2_recorte[:, :, :3]
+        imagen_2_alpha = img2_recorte[:, :, 3]
+        # Convertir el canal alfa a una máscara 3D y combinarla con el parámetro alpha
+        mask = np.expand_dims(imagen_2_alpha, axis=2) * alpha
+    else:
+        imagen_2_rgb = img2_recorte
+        mask = alpha  # se aplica un valor escalar a todos los píxeles
+    
+    # Se combina la imagen 1 y 2 con la región de la imagen base utilizando la máscara.
+    roi_blended = mask * imagen_2_rgb + (1 - mask) * roi
     # Se inserta la imagen procesada en la imagen final.
-    resultado[y_offset:y_fin, x_offset:x_fin] = alpha * img2_recorte + (1 - alpha) * roi
+    resultado[y_offset:y_fin, x_offset:x_fin] = roi_blended
     
     return resultado
 
