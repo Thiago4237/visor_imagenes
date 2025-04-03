@@ -217,26 +217,54 @@ class VisorImagen(QWidget):
     
     def cargarImagen(self, filePath):
         """
-        Carga una imagen desde la ruta especificada y la inicializa para su visualización y edición.
-        Args:
+        Carga una imagen desde la ruta especificada y la prepara para su visualización y edición.
+
+        Parámetros:
             filePath (str): Ruta del archivo de la imagen a cargar.
+
         Comportamiento:
-            - Lee la imagen desde la ruta proporcionada y la almacena en las variables internas 
-              `imagen_original`, `imagen_base` e `imagen`.
-            - Inicializa el historial de deshacer/rehacer con la imagen original y limpia la pila de rehacer.
-            - Reinicia el factor de zoom a 1.0 y muestra la imagen en el visor.
-            - Actualiza la barra de ruta con la ruta del archivo cargado.
+        - Carga la imagen desde la ruta proporcionada utilizando `lm.cargar_imagen(filePath)`.
+        - Si la imagen supera 1 millón de píxeles, se genera una versión reducida para optimizar la visualización.
+        - Guarda la imagen en `imagen_original`, `imagen_base` e `imagen`, según corresponda.
+        - Inicializa el historial de deshacer/rehacer (`historial`, `redo_stack`).
+        - Ajusta el tamaño máximo del historial dinámicamente en función del tamaño de la imagen.
+        - Restablece el factor de zoom a 1.0 y actualiza la visualización llamando a `mostrarImagen()`.
+        - Actualiza la barra de ruta con la ubicación del archivo cargado.
+
+        Notas:
+        - Si la imagen es muy grande (>1M píxeles), se calcula un factor de reducción para generar una versión optimizada.
+        - `usar_version_reducida` y `factor_reduccion` se configuran para indicar si se está usando la versión reducida.
+        - El tamaño del historial de deshacer se ajusta dinámicamente para evitar uso excesivo de memoria.
         """
         
         if filePath:
             # lectura de imagen y se guarda en variables a usar para la imagen
             self.imagen_original = lm.cargar_imagen(filePath)
-            self.imagen_base = self.imagen_original.copy()
-            self.imagen = self.imagen_original.copy()
+            
+            # Crear versión para UI (reducida si la imagen es grande)
+            h, w = self.imagen_original.shape[:2]
+            total_pixels = h * w
+            
+            # Si la imagen tiene más de 1 millón de píxeles, crear versión reducida para UI
+            if total_pixels > 1000000:  # Umbral de 1M píxeles (ajustable)
+                # Calcular factor para reducir a aprox. 1M píxeles
+                factor = np.sqrt(1000000 / total_pixels)
+                self.imagen_base = lm.redimensionar_imagen(self.imagen_original, factor)
+                self.usar_version_reducida = True
+                self.factor_reduccion = factor
+            else:
+                self.imagen_base = self.imagen_original.copy()
+                self.usar_version_reducida = False
+                self.factor_reduccion = 1.0
+                
+            self.imagen = self.imagen_base.copy()
             
             # inicializa los valores del undo/redo
-            self.historial = [self.imagen.copy()]  # Iniciar historial con la imagen original
+            self.historial = [self.imagen.copy()]  # Iniciar historial con la imagen
             self.redo_stack.clear()  # Limpiar pila de rehacer
+            
+            # Limitar tamaño del historial basado en tamaño de imagen
+            self.max_history = max(5, int(10000000 / total_pixels))  # Más pequeño para imágenes grandes
             
             # reinicia el zoom y muestra la imagen
             self.zoom_factor = 1.0 
@@ -412,19 +440,34 @@ class VisorImagen(QWidget):
 
     def reiniciarImagen(self):
         """
-        Restaura la imagen al estado original y reinicia los parámetros relacionados.
+        Restaura la imagen al estado original y restablece los parámetros de edición.
+
         Este método realiza las siguientes acciones:
         - Restaura la imagen actual a una copia de la imagen original.
+        - Si la imagen es grande y `usar_version_reducida` está habilitado, recrea la versión optimizada.
         - Actualiza la imagen base con la copia restaurada.
         - Reinicia el historial de modificaciones con la imagen restaurada.
-        - Limpia la pila de acciones de rehacer (redo_stack).
-        - Restablece el factor de zoom a 1.0.
-        - Llama al método `mostrarImagen` para actualizar la visualización de la imagen.
-        Requiere que `self.imagen_original` no sea None para realizar la restauración.
+        - Vacía la pila de acciones de rehacer (`redo_stack`).
+        - Restablece el factor de zoom a su valor predeterminado (1.0).
+        - Llama al método `mostrarImagen()` para actualizar la visualización.
+
+        Requisitos:
+        - `self.imagen_original` no debe ser `None` para realizar la restauración.
+        - Si `usar_version_reducida` está definido y activado, se aplicará la función `lm.redimensionar_imagen()`.
+
         """
         if self.imagen_original is not None:
-            self.imagen = self.imagen_original.copy()
-            self.imagen_base = self.imagen.copy()
+            # Utilizar la versión optimizada si es una imagen grande
+            if hasattr(self, 'usar_version_reducida') and self.usar_version_reducida:
+                # Recrear la versión optimizada usando el mismo factor
+                self.imagen = lm.redimensionar_imagen(self.imagen_original, self.factor_reduccion)
+                self.imagen_base = self.imagen.copy()
+            else:
+                # Para imágenes pequeñas, usar directamente la original
+                self.imagen = self.imagen_original.copy()
+                self.imagen_base = self.imagen.copy()
+                
+            # Reiniciar historial y otros parámetros
             self.historial = [self.imagen.copy()]
             self.redo_stack.clear()
             self.zoom_factor = 1.0
