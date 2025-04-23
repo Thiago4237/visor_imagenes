@@ -1,5 +1,5 @@
 import os
-from PyQt6.QtWidgets import QToolBar, QLabel, QWidget, QSizePolicy, QFileDialog, QComboBox
+from PyQt6.QtWidgets import QToolBar, QLabel, QWidget, QSizePolicy, QFileDialog
 from PyQt6.QtGui import QIcon, QPixmap, QAction
 from PyQt6.QtCore import QSize
 import config.config as cfg
@@ -35,15 +35,10 @@ class BarraSuperior(QToolBar):
         logo_label.setFixedSize(38, 38)
         self.addWidget(logo_label)
         
-        # Añadir espacio flexible para empujar los botones a la derecha
+        # Añadir espacio flexible para empujar los botones
         spacer_left = QWidget()
         spacer_left.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.addWidget(spacer_left)
-
-        # Añadir espacio flexible para empujar los botones a la izquierda
-        spacer_right = QWidget()
-        spacer_right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.addWidget(spacer_right)
 
         # Botones de acción
         self.initActionsTop()

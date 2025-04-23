@@ -323,31 +323,42 @@ class VisorImagen(QWidget):
         Excepciones:
         - Si `self.imagen` es None, el método no realiza ninguna acción.
         """
+        # Verifica si hay una imagen disponible para mostrar
         if self.imagen is not None:
+            # Convierte la imagen de rango [0,1] a rango [0,255] y cambia el tipo a entero de 8 bits sin signo
             img = (self.imagen * 255).astype(np.uint8)
             
+            # Detecta el tipo de imagen según sus dimensiones y crea el objeto QImage correspondiente
             if len(img.shape) == 2:
+                # Imagen en escala de grises (2 dimensiones: alto y ancho)
                 h, w = img.shape
                 qImg = QImage(img.data, w, h, w, QImage.Format.Format_Grayscale8)
             elif img.shape[2] == 3:
+                # Imagen RGB (3 dimensiones: alto, ancho y 3 canales de color)
                 h, w, c = img.shape
+                # Asegura que los datos de la imagen estén contiguos en memoria para evitar problemas
                 img = np.ascontiguousarray(img)
-                bytesPerLine = 3 * w
+                bytesPerLine = 3 * w  # Calcula bytes por línea: 3 bytes (RGB) * ancho
                 qImg = QImage(img.data, w, h, bytesPerLine, QImage.Format.Format_RGB888)
             elif img.shape[2] == 4:
+                # Imagen RGBA (3 dimensiones: alto, ancho y 4 canales incluyendo transparencia)
                 h, w, c = img.shape
                 img = np.ascontiguousarray(img)
-                bytesPerLine = 4 * w
+                bytesPerLine = 4 * w  # Calcula bytes por línea: 4 bytes (RGBA) * ancho
                 qImg = QImage(img.data, w, h, bytesPerLine, QImage.Format.Format_RGBA8888)
             else:
+                # Si el formato de la imagen no es compatible, termina la función
                 return
             
-            pixmap = QPixmap.fromImage(qImg)
-            label_size = self.labelImagen.size()
-            scaled_pixmap = pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            self.labelImagen.setPixmap(scaled_pixmap)
-            self.labelImagen.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    
+            
+            pixmap = QPixmap.fromImage(qImg) # Convierte QImage a QPixmap para mostrarla en un QLabel            
+            label_size = self.labelImagen.size() # Obtiene el tamaño actual del QLabel
+            # Escala la imagen para ajustarse al QLabel manteniendo la proporción y con transformación suave
+            scaled_pixmap = pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio, 
+                                        Qt.TransformationMode.SmoothTransformation)            
+            self.labelImagen.setPixmap(scaled_pixmap) # Establece la imagen escalada en el QLabel            
+            self.labelImagen.setAlignment(Qt.AlignmentFlag.AlignCenter) # Centra la imagen en el QLabel
+        
     def guardarImagen(self, filePath):
         """
         Guarda la imagen actual en la ruta de archivo especificada.
