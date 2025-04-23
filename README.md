@@ -4,6 +4,8 @@ Este visor de imágenes es una aplicación desarrollada en Python utilizando **P
 
 ![Visor GIF](Resources/visor_imagen/visor_imagen.gif)
 
+---
+
 ## **Características Principales**
 - **Visualización optimizada**: Escala automáticamente imágenes grandes (>1M píxeles) para mantener un rendimiento fluido.
 - **Historial de cambios**: Sistema de deshacer/rehacer para todas las modificaciones.
@@ -24,7 +26,7 @@ Este visor de imágenes es una aplicación desarrollada en Python utilizando **P
 
 ### **Para instalar las dependencias**
    ```bash
-   pip install -r install.txt
+   pip install -r requirements.txt
    ```
 
 ---
@@ -43,7 +45,6 @@ Este visor de imágenes es una aplicación desarrollada en Python utilizando **P
 
 ### **Gestos con Ratón**
 - **Rueda del ratón**: Zoom in/out centrado en la posición del cursor.
-- **Arrastrar**: Navegar por la imagen cuando está ampliada.
 
 ### **Gestos Táctiles**
 - **Pellizcar (Pinch)**: Zoom in/out en dispositivos táctiles.
