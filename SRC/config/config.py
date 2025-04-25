@@ -22,6 +22,7 @@ LOGOS = {
     "logo": get_logo_path("logo.png"),
 }
 
+# Rutas de iconos
 ICONOS = {
     "cargar": get_icon_path("cargar.png"),
     "actualizar": get_icon_path("actualizar.png"),
@@ -35,7 +36,12 @@ ICONOS = {
 
 # Atajos de teclado
 ATAJOS = {
-    "cargar": "Ctrl+C",
+    "cargar": "Ctrl+L",  
     "actualizar": "Ctrl+A",
     "guardar": "Ctrl+G",
+    "deshacer": "Ctrl+Z",
+    "rehacer": "Ctrl+Y",
+    "ajustesBasicos": "1",
+    "ajustesDeFiltros": "2",
+    "ajustesAvanzados": "3",
 }

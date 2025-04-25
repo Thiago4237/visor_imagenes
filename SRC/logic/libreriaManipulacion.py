@@ -80,7 +80,7 @@ def ajusteContraste(imagen, contraste, tipo):
     
     img = np.copy(imagen)
     if tipo == 0:
-        img = np.clip(np.log1p(contraste * img) / np.log1p(contraste), 0, 1)
+        img = np.clip(np.log1p(contraste * img) / np.log1p(contraste + 1), 0, 1)
     else:
         img = np.clip(np.exp(contraste * (img - 1)), 0, 1)
     return img
@@ -88,17 +88,23 @@ def ajusteContraste(imagen, contraste, tipo):
 # capa de la imagen 
 def capaImagen(img, capa):
     """
-    Extrae una capa específica de una imagen y la devuelve como una nueva imagen con tres canales.
+    Aplica un efecto de atenuación a los canales de color de una imagen, 
+    manteniendo el canal especificado sin cambios significativos.
     Parámetros:
-    img (numpy.ndarray): La imagen de entrada en formato de matriz numpy con tres canales (RGB).
-    capa (int): El índice de la capa que se desea extraer (0 para rojo, 1 para verde, 2 para azul).
+    img (numpy.ndarray): Imagen de entrada representada como un arreglo NumPy.
+                         Se espera que tenga tres canales (RGB).
+    capa (int): Índice del canal que se desea mantener (0 para rojo, 1 para verde, 2 para azul).
     Retorna:
-    numpy.ndarray: Una nueva imagen con la misma dimensión que la imagen de entrada, 
-                   pero con todos los canales en cero excepto la capa especificada.
+    numpy.ndarray: Imagen modificada con los canales no seleccionados atenuados.
     """
-    fila,columna = img.shape[:2]
-    imgCapa = np.zeros((fila,columna,3))
-    imgCapa[:,:,capa] = img[:,:,capa]
+
+    imgCapa = np.copy(img)
+    imgCapa = quitarAtenuacionCanal(imgCapa)
+    
+    for i in range(3):
+        if i != capa:
+            imgCapa[:,:,i] = imgCapa[:,:,i] * 0.1
+
     return imgCapa
 
 # invertir imagen 
@@ -127,109 +133,217 @@ def quitarCanal(img, canal):
                    pero con el canal especificado eliminado.
     """
     imgCanal = np.copy(img)
-    imgCanal[:,:,canal] = 0
+    imgCanal = quitarAtenuacionCanal(imgCanal)
+    imgCanal[:,:,canal] = imgCanal[:,:,canal] * 0.1  # Eliminar el canal especificado
     return imgCanal
 
-# marca de agua
-def fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=0, y_offset=0):
+# quitar atenuacion de la imagen
+def quitarAtenuacionCanal(imagen, factor_recuperacion=10):
     """
-    Fusiona dos imágenes superponiendo una sobre la otra con un nivel de transparencia especificado.
+    Corrige la atenuación en los canales de color de una imagen.
+    Esta función ajusta los valores de los canales de color (R, G, B) de una imagen
+    si alguno de ellos está atenuado en comparación con los otros. La corrección
+    se realiza multiplicando los valores del canal atenuado por un factor de recuperación.
     Args:
-        imagen1 (numpy.ndarray): La imagen base sobre la cual se fusionará la segunda imagen.
-        imagen2 (numpy.ndarray): La imagen que se superpondrá sobre la imagen base.
-        alpha (float, opcional): Nivel de transparencia de la imagen superpuesta. 
-                                 Valores entre 0 (completamente transparente) y 1 (completamente opaca). 
-                                 Por defecto es 0.5.
-        x_offset (int, opcional): Desplazamiento horizontal (en píxeles) desde la esquina superior izquierda 
-                                  de la imagen base donde se colocará la imagen superpuesta. Por defecto es 0.
-        y_offset (int, opcional): Desplazamiento vertical (en píxeles) desde la esquina superior izquierda 
-                                  de la imagen base donde se colocará la imagen superpuesta. Por defecto es 0.
+        imagen (numpy.ndarray): Imagen de entrada representada como un arreglo NumPy
+            con forma (alto, ancho, 3), donde el último eje corresponde a los canales
+            de color (R, G, B).
+        factor_recuperacion (float, opcional): Factor por el cual se multiplicará el
+            canal atenuado para corregirlo. El valor predeterminado es 10.
     Returns:
-        numpy.ndarray: Una nueva imagen que resulta de la fusión de las dos imágenes.
-    Notas:
-        - Si la imagen superpuesta (imagen2) excede los límites de la imagen base (imagen1), 
-          se recortará automáticamente para ajustarse.
-        - La función no modifica las imágenes originales, sino que trabaja con copias.
-    Ejemplo:
-        resultado = fusionar_imagenes(imagen1, imagen2, alpha=0.7, x_offset=50, y_offset=100)
+        numpy.ndarray: Imagen corregida con los canales atenuados ajustados.
     """
+    
+    imagen_corregida = imagen.copy()
+    
+    for canal in range(3):  # Iterar sobre R, G, B
+        media_canal = np.mean(imagen[:, :, canal])  # Media del canal actual
+        medias_otros = [np.mean(imagen[:, :, i]) for i in range(3) if i != canal]  # Media de los otros dos canales
+        media_promedio = np.mean(medias_otros)  # Media global de los otros canales
 
-    # Hacer una copia para no modificar la imagen base original
+        # Si el canal está atenuado, aplicamos corrección
+        if media_canal < media_promedio:
+            imagen_corregida[:, :, canal] = np.clip(imagen[:, :, canal] * factor_recuperacion, 0, 1)
+    
+    return imagen_corregida
+
+# fusionar imagenes
+def fusionar_imagenes(imagen1, imagen2, alpha=1.0, x_offset=0, y_offset=0):
+    """
+    Fusiona dos imágenes aplicando una transparencia opcional y un desplazamiento.
+    Esta función toma dos imágenes y las combina en una sola, permitiendo ajustar
+    la transparencia de la segunda imagen y su posición relativa a la primera.
+    Parámetros:
+    -----------
+    imagen1 : numpy.ndarray
+        La imagen base sobre la cual se fusionará la segunda imagen. Debe ser un
+        arreglo NumPy con tres o cuatro canales (RGB o RGBA).
+    imagen2 : numpy.ndarray
+        La imagen que se fusionará sobre la primera. Debe ser un arreglo NumPy
+        con tres o cuatro canales (RGB o RGBA).
+    alpha : float, opcional
+        Valor de transparencia global para la segunda imagen. Debe estar en el
+        rango [0.0, 1.0], donde 0.0 es completamente transparente y 1.0 es
+        completamente opaco. Por defecto es 1.0.
+    x_offset : int, opcional
+        Desplazamiento horizontal (en píxeles) de la segunda imagen con respecto
+        a la primera. Por defecto es 0.
+    y_offset : int, opcional
+        Desplazamiento vertical (en píxeles) de la segunda imagen con respecto
+        a la primera. Por defecto es 0.
+    Retorna:
+    --------
+    numpy.ndarray
+        Una nueva imagen que resulta de la fusión de las dos imágenes de entrada.
+        La imagen resultante tiene las mismas dimensiones que `imagen1`.
+    Notas:
+    ------
+    - Si `imagen1` tiene un canal alfa, este será eliminado antes de realizar
+      la fusión.
+    - Si `imagen2` tiene un canal alfa, este será combinado con el valor de
+      transparencia global (`alpha`) para calcular la transparencia final.
+    - Los valores de los píxeles en la imagen resultante se recortan al rango
+      [0, 1].
+    Ejemplo:
+    --------
+    resultado = fusionar_imagenes(imagen1, imagen2, alpha=0.5, x_offset=10, y_offset=20)
+    """
+    
+    # Eliminar canal alfa de imagen1 si lo tiene
+    if imagen1.shape[2] == 4:
+        imagen1 = imagen1[:, :, :3]
+
     resultado = np.copy(imagen1)
-    
-    # Dimensiones de la marca de agua y de la imagen base
+
     h1, w1, _ = imagen1.shape
-    h2, w2, _ = imagen2.shape
-    
+    h2, w2, c2 = imagen2.shape
+
     x_fin = min(w1, x_offset + w2)
     y_fin = min(h1, y_offset + h2)
-    
-    # Se extrae la región de la imagen base donde se colocará la marca de agua.
+
     roi = resultado[y_offset:y_fin, x_offset:x_fin]
-    img2_recorte = imagen2[: (y_fin - y_offset), : (x_fin - x_offset)]
-    
-    # Se inserta la imagen procesada en la imagen final.
-    resultado[y_offset:y_fin, x_offset:x_fin] = alpha * img2_recorte + (1 - alpha) * roi
-    
+    img2_recorte = imagen2[:(y_fin - y_offset), :(x_fin - x_offset)]
+
+    if c2 == 4:
+        imagen_2_rgb = img2_recorte[:, :, :3]
+        imagen_2_alpha = img2_recorte[:, :, 3]
+
+        # Multiplicamos el canal alfa original por el alpha global
+        mask = imagen_2_alpha[:, :, np.newaxis] * alpha
+    else:
+        imagen_2_rgb = img2_recorte
+        mask = alpha
+
+    # Fusionar con máscara de transparencia
+    roi_blended = mask * imagen_2_rgb + (1 - mask) * roi
+
+    # Asignar resultado fusionado
+    resultado[y_offset:y_fin, x_offset:x_fin] = np.clip(roi_blended, 0, 1)
+
     return resultado
+
 
 # rotar imagen
 def rotar_imagen(img, angulo):
     """
-    Rota una imagen en un ángulo especificado usando solo numpy y matplotlib.
-    
+    Rota una imagen en sentido antihorario por un ángulo especificado, rellenando 
+    el fondo con un color predeterminado.
     Parámetros:
-    img (ndarray): Imagen a rotar (matriz numpy).
-    angulo (float): Ángulo en grados para rotar la imagen. Los valores positivos rotan la imagen en sentido antihorario.
-    
+    -----------
+    img : numpy.ndarray
+        Imagen de entrada en formato numpy array. Puede ser en escala de grises 
+        (2D), RGB (3 canales) o RGBA (4 canales). Los valores deben estar 
+        normalizados entre 0 y 1.
+    angulo : float
+        Ángulo de rotación en grados. Un valor positivo rota la imagen en sentido 
+        antihorario.
     Retorna:
-    ndarray: Imagen rotada con valores de píxeles entre 0 y 1.
+    --------
+    numpy.ndarray
+        Imagen rotada con el mismo número de canales que la imagen de entrada. 
+        Los valores están normalizados entre 0 y 1.
+    Notas:
+    ------
+    - Si el ángulo es múltiplo de 360, se devuelve una copia de la imagen original.
+    - El fondo de la imagen rotada se rellena con el color RGB #606470 
+      (normalizado a [0.376, 0.392, 0.439]). Si la imagen tiene un canal alfa, 
+      el fondo incluye opacidad completa (1.0).
+    - La interpolación bilineal se utiliza para calcular los valores de los 
+      píxeles en la imagen rotada.
+    - Las coordenadas fuera de los límites de la imagen original se rellenan 
+      con el color de fondo.
     """
-    angulo_rad = np.radians(angulo)
+    
+    if angulo % 360 == 0:
+        return np.copy(img)
+    
     h, w = img.shape[:2]
-    y, x = np.indices((h, w))
-    
-    # Centro de la imagen
-    x_centro, y_centro = w / 2, h / 2
-    
-    x = x.astype(np.float64)  # Convertir a float64 antes de la resta
-    y = y.astype(np.float64)
-    
-    x -= x_centro
-    y -= y_centro
+    angulo_rad = np.radians(angulo)
 
-    # Rotación de coordenadas
-    cos_a, sin_a = np.cos(angulo_rad), np.sin(angulo_rad)
-    x_rot = cos_a * x - sin_a * y + x_centro
-    y_rot = sin_a * x + cos_a * y + y_centro
+    w_rot = int(abs(np.cos(angulo_rad) * w) + abs(np.sin(angulo_rad) * h))
+    h_rot = int(abs(np.sin(angulo_rad) * w) + abs(np.cos(angulo_rad) * h))
 
-    # Redondeo a índices válidos dentro de la imagen
-    x_rot = np.clip(x_rot, 0, w - 1)
-    y_rot = np.clip(y_rot, 0, h - 1)
+    x_centro_orig, y_centro_orig = w / 2, h / 2
+    x_centro_rot, y_centro_rot = w_rot / 2, h_rot / 2
 
-    # Interpolación bilineal manual
-    x0 = np.floor(x_rot).astype(int)
-    x1 = np.clip(x0 + 1, 0, w - 1)
-    y0 = np.floor(y_rot).astype(int)
-    y1 = np.clip(y0 + 1, 0, h - 1)
+    # Color de fondo (RGB del visor #606470 → normalizado)
+    color_rgb = np.array([int('60', 16), int('64', 16), int('70', 16)]) / 255.0
 
-    # Pesos de interpolación
-    wa = (x1 - x_rot) * (y1 - y_rot)
-    wb = (x_rot - x0) * (y1 - y_rot)
-    wc = (x1 - x_rot) * (y_rot - y0)
-    wd = (x_rot - x0) * (y_rot - y0)
+    # Asegurar que la imagen tenga 3 o más canales
+    if img.ndim == 2:
+        img = np.stack([img]*3, axis=-1)
 
-    # Aplicar interpolación a cada canal
-    img_rotada = np.zeros_like(img)
-    for c in range(img.shape[2]):
-        img_rotada[:, :, c] = (
-            wa * img[y0, x0, c] +
-            wb * img[y0, x1, c] +
-            wc * img[y1, x0, c] +
-            wd * img[y1, x1, c]
+    canales = img.shape[2]
+
+    # Si la imagen tiene canal alfa, agregar opacidad completa (1.0) al fondo
+    if canales == 4:
+        color_fondo = np.concatenate([color_rgb, [1.0]])
+    else:
+        color_fondo = color_rgb
+
+    # Crear imagen rotada con color de fondo
+    img_rotada = np.ones((h_rot, w_rot, canales))
+    for c in range(canales):
+        img_rotada[:, :, c] *= color_fondo[c]
+
+    y_rot, x_rot = np.indices((h_rot, w_rot)).astype(np.float64)
+    x_rot -= x_centro_rot
+    y_rot -= y_centro_rot
+
+    cos_a, sin_a = np.cos(-angulo_rad), np.sin(-angulo_rad)
+    x_orig = cos_a * x_rot - sin_a * y_rot + x_centro_orig
+    y_orig = sin_a * x_rot + cos_a * y_rot + y_centro_orig
+
+    x0 = np.floor(x_orig).astype(int)
+    y0 = np.floor(y_orig).astype(int)
+    x1 = x0 + 1
+    y1 = y0 + 1
+
+    x0 = np.clip(x0, 0, w - 2)
+    x1 = np.clip(x1, 0, w - 1)
+    y0 = np.clip(y0, 0, h - 2)
+    y1 = np.clip(y1, 0, h - 1)
+
+    wx = x_orig - x0
+    wy = y_orig - y0
+
+    valid_coords = (x_orig >= 0) & (x_orig < w - 1) & (y_orig >= 0) & (y_orig < h - 1)
+
+    for c in range(canales):
+        top_left = img[y0, x0, c] * (1 - wx) * (1 - wy)
+        top_right = img[y0, x1, c] * wx * (1 - wy)
+        bottom_left = img[y1, x0, c] * (1 - wx) * wy
+        bottom_right = img[y1, x1, c] * wx * wy
+
+        img_rotada[valid_coords, c] = (
+            top_left[valid_coords] +
+            top_right[valid_coords] +
+            bottom_left[valid_coords] +
+            bottom_right[valid_coords]
         )
 
     return np.clip(img_rotada, 0, 1)
+
 
 # aplicar zoom
 def aplicar_zoom(img, factor, x_centro, y_centro):
@@ -259,6 +373,46 @@ def aplicar_zoom(img, factor, x_centro, y_centro):
     
     return img_zoom
 
+def aplicar_zoom_1(img, factor, x_centro, y_centro):
+    """
+    Aplica zoom en una imagen centrado en un punto específico usando solo NumPy.
+    
+    Parámetros:
+    - img (numpy.ndarray): Imagen en formato de matriz NumPy.
+    - factor (float): Factor de zoom (>1 para acercar, <1 para alejar).
+    - x_centro (int): Coordenada X del centro de zoom.
+    - y_centro (int): Coordenada Y del centro de zoom.
+    
+    Retorna:
+    - numpy.ndarray: Imagen escalada con zoom.
+    """
+    h, w = img.shape[:2]
+
+    # Calcular el nuevo tamaño de la región de recorte
+    nuevo_ancho = int(w / factor)
+    nuevo_alto = int(h / factor)
+
+    # Asegurar que el recorte esté dentro de los límites de la imagen
+    x_inicio = max(0, int(x_centro - nuevo_ancho / 2))
+    y_inicio = max(0, int(y_centro - nuevo_alto / 2))
+    x_fin = min(w, x_inicio + nuevo_ancho)
+    y_fin = min(h, y_inicio + nuevo_alto)
+
+    # Recortar la imagen
+    img_zoom = img[y_inicio:y_fin, x_inicio:x_fin]
+
+    # Escalar la imagen de vuelta al tamaño original usando duplicación de píxeles
+    scale_x = w / img_zoom.shape[1]
+    scale_y = h / img_zoom.shape[0]
+
+    img_zoom = np.kron(img_zoom, np.ones((int(scale_y), int(scale_x), 1)))  # Repetición de píxeles
+
+    # Recortar para que coincida exactamente con (h, w)
+    img_zoom = img_zoom[:h, :w]
+
+    return img_zoom
+
+
 # guardar imagen 
 def guardar_imagen(ruta, img):
     """
@@ -276,26 +430,55 @@ def guardar_imagen(ruta, img):
 # binarizar imagen
 def binarizar_imagen(img, umbral=0.5):
     """
-    Convierte una imagen en escala de grises a una imagen binaria (blanco y negro).
+    Convierte una imagen en escala de grises a una imagen binaria (blanco y negro) manteniendo el formato RGB o RGBA.
 
     Parámetros:
-    img (numpy array): Imagen en escala de grises.
-    umbral (int): Valor de umbral para binarizar (0-1).
+    img (numpy array): Imagen de entrada con 3 canales (RGB) o 4 canales (RGBA).
+    umbral (float): Valor del umbral para binarizar (0-1).
 
     Retorna:
-    numpy array: Imagen binarizada (solo 0 y 1).
+    numpy array: Imagen binarizada con los mismos canales que la original.
     """
-    # Convertimos la imagen a escala de grises si no lo está
-    if len(img.shape) == 3:  # Si la imagen tiene 3 canales (RGB)
-        img = np.dot(img[..., :3], [0.2989, 0.5870, 0.1140])  # Conversión a escala de grises
+    # Determinar el número de canales
+    canales = img.shape[2] if img.ndim == 3 else 1
 
-    # Aplicamos binarización: Si el valor es mayor o igual al umbral → 1 (blanco), sino → 0 (negro)
-    img_binaria = np.where(img >= umbral, 1, 0)
+    # Convertir a escala de grises si es RGB o RGBA
+    if canales >= 3:
+        img_gris = np.dot(img[..., :3], [0.2989, 0.5870, 0.1140])  # Convertir a escala de grises
+    else:
+        img_gris = img  # Ya es en escala de grises
 
-    return img_binaria
+    # Aplicar binarización
+    img_binaria = np.where(img_gris >= umbral, 1, 0)
+
+    # Convertir la imagen binarizada en el mismo formato de canales
+    if canales == 4:
+        img_binaria_rgb = np.stack([img_binaria] * 3 + [img[..., 3]], axis=-1)  # Mantiene el canal alfa
+    else:
+        img_binaria_rgb = np.stack([img_binaria] * 3, axis=-1)
+
+    return img_binaria_rgb
+
 
 # histograma
 def histograma_imagen(img, bins=50, alpha=0.5):
+    """
+    Genera y muestra un histograma para cada canal de color (rojo, verde y azul) de una imagen.
+    Parámetros:
+    -----------
+    img : numpy.ndarray
+        Imagen de entrada en formato numpy array. Se espera que tenga tres canales (RGB).
+        Si los valores de la imagen están en el rango [0, 1], se escalarán automáticamente a [0, 255].
+    bins : int, opcional
+        Número de divisiones (bins) para el histograma. Por defecto es 50.
+    alpha : float, opcional
+        Transparencia de las barras del histograma. Por defecto es 0.5.
+    Notas:
+    ------
+    - La función genera un histograma separado para cada canal de color (rojo, verde y azul).
+    - Los histogramas se muestran en una figura con tres subgráficos, uno para cada canal.
+    """
+    
     # Asegurar que la imagen está en rango 0-255 si es necesario
     if img.max() <= 1.0:
         img = (img * 255).astype(np.uint8)
@@ -303,19 +486,41 @@ def histograma_imagen(img, bins=50, alpha=0.5):
     colores = ['r', 'g', 'b']
     nombres = ['Canal Rojo', 'Canal Verde', 'Canal Azul']
 
-    fig, axes = plt.subplots(3, 1, figsize=(6, 8))  # 3 filas, 1 columna
+    # Crear una figura más pequeña y compacta
+    fig, axes = plt.subplots(3, 1, figsize=(9, 6))  # Tamaño reducido
+    fig.suptitle("Histograma de la imagen", fontsize=10)
 
     # Generar un histograma separado por cada canal
     for i, ax in enumerate(axes):
         canal = img[..., i].flatten()
         ax.hist(canal, bins=bins, color=colores[i], alpha=alpha)
-        ax.set_title(nombres[i])
-        ax.set_xlabel("Intensidad de píxeles")
-        ax.set_ylabel("Frecuencia")
+        ax.set_title(nombres[i], fontsize=9)
+        ax.set_xlabel("Intensidad de píxeles", fontsize=8)
+        ax.set_ylabel("Frecuencia", fontsize=8)
         ax.set_xlim([0, 255])  # Asegurar que los ejes sean consistentes
+        ax.tick_params(axis='both', which='major', labelsize=7)  # Tamaño de las etiquetas de los ejes
 
     plt.tight_layout()
-    plt.show()
+    
+    # Centrar la ventana en la pantalla
+    mng = plt.get_current_fig_manager()
+    if hasattr(mng, 'window'):
+        # Para backends que soportan esta funcionalidad (TkAgg, WXAgg, Qt5Agg)
+        try:
+            # QT backend
+            if hasattr(mng, 'window'):
+                geom = mng.window.geometry()
+                x, y, dx, dy = geom.getRect()
+                mng.window.setGeometry(280, 90, dx, dy)
+        except:
+            try:
+                # TkAgg backend
+                mng.window.wm_geometry("+300+300")
+            except:
+                pass  # Ignorar si no se puede centrar
+    
+    # Usar block=False para evitar bloquear el bucle de eventos existente
+    plt.show(block=False)
 
 # filtro de zonas claras 
 def filtrar_zonas_claras_oscuras(img, umbral=0.5, modo="claras", color=[1, 0, 0]):
@@ -348,3 +553,54 @@ def filtrar_zonas_claras_oscuras(img, umbral=0.5, modo="claras", color=[1, 0, 0]
         img_filtrada[..., i] = np.where(mascara, color[i], img_filtrada[..., i])
 
     return img_filtrada
+
+# redimensionar imagen
+def redimensionar_imagen(imagen, factor):
+    """
+    Redimensiona una imagen según el factor especificado usando solo NumPy.
+    
+    Args:
+        imagen (numpy.ndarray): La imagen a redimensionar.
+        factor (float): Factor de escala. Valores mayores a 1 amplían la imagen, 
+                        valores menores a 1 la reducen.
+                        
+    Returns:
+        numpy.ndarray: La imagen redimensionada.
+    """
+    if imagen is None:
+        return None
+        
+    # Obtener dimensiones originales
+    h, w = imagen.shape[:2]
+    
+    # Calcular nuevas dimensiones
+    new_h, new_w = int(h * factor), int(w * factor)
+    
+    # Crear coordenadas para la nueva imagen
+    y_indices = np.linspace(0, h-1, new_h)
+    x_indices = np.linspace(0, w-1, new_w)
+    
+    # Para interpolación vecino más cercano (más rápida)
+    y_indices = np.round(y_indices).astype(int)
+    x_indices = np.round(x_indices).astype(int)
+    
+    # Limitar a los límites de la imagen
+    y_indices = np.clip(y_indices, 0, h-1)
+    x_indices = np.clip(x_indices, 0, w-1)
+    
+    # Crear una malla de coordenadas
+    coord_y, coord_x = np.meshgrid(y_indices, x_indices, indexing='ij')
+    
+    # Redimensionar cada canal
+    if len(imagen.shape) == 3:
+        # Imagen con canales (RGB/RGBA)
+        channels = imagen.shape[2]
+        resized = np.zeros((new_h, new_w, channels), dtype=imagen.dtype)
+        
+        for c in range(channels):
+            resized[:, :, c] = imagen[coord_y, coord_x, c]
+    else:
+        # Imagen en escala de grises
+        resized = imagen[coord_y, coord_x]
+    
+    return resized
